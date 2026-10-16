@@ -1,0 +1,25 @@
+name: Publish verified contacts UI update
+on:
+  push:
+    branches: [release-contacts-ui]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Promote the signed APK after build, lint and signature checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/arhancuylan/Callguard/actions/runs/38963901837/jobs --jq '.jobs[0].steps[] | select(.name=="Unit tests, lint and APK builds" or .name=="Prepare verified APK") | .conclusion' > checks.txt
+          test "$(grep -c '^success$' checks.txt)" = 2
+          gh api repos/arhancuylan/Callguard/actions/artifacts/12074586044/zip > final.zip
+          unzip final.zip
+          sha256sum --check CallGuard-1.0.3.apk.sha256
+          printf '\nEmülatör arayüz doğrulaması pencere odağı sorunu nedeniyle tamamlanamadı. Rehber ekranlarının cihazda kontrol edilmesi gerekir. Birim testleri, lint, APK derleme ve güncelleme imzası karşılaştırması başarılı.\n' >> RELEASE_NOTES.md
+          if ! gh release view v1.0.3 >/dev/null 2>&1; then
+            gh release create v1.0.3 CallGuard-1.0.3.apk CallGuard-1.0.3.apk.sha256 --target fe2a0288afe2b25331c522d4396cc3e4b9bf0d79 --title 'CallGuard 1.0.3 · by AC' --notes-file RELEASE_NOTES.md --latest
+          fi
