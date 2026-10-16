@@ -12,7 +12,7 @@ try {
         echo '{"error":"CallGuard sunucu kurulumu henüz tamamlanmadı."}'; exit;
     }
     $resolved=realpath($private); $root=realpath($_SERVER['DOCUMENT_ROOT'] ?? __DIR__);
-    if (!$resolved || !$root || $resolved===$root || str_starts_with($resolved,$root.DIRECTORY_SEPARATOR) || str_contains($resolved,'/public_html/')) throw new RuntimeException('Private directory must be outside all web roots');
+    if (!$resolved || !$root || $resolved===$root || str_starts_with($resolved,$root.DIRECTORY_SEPARATOR) || preg_match('#/(?:public_html|www)(?:/|$)#',$resolved)) throw new RuntimeException('Private directory must be outside all web roots');
     require $private . '/vendor/autoload.php';
     require $private . '/src/Policy.php';
     require $private . '/src/Api.php';
