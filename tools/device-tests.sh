@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p evidence
+collect_evidence() {
+  adb logcat -d > evidence/device.log || true
+  adb shell dumpsys notification > evidence/notification-state.txt || true
+  adb pull /sdcard/Android/data/com.callguard.mobile/files/screenshots evidence/ || true
+}
+trap collect_evidence EXIT
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb install -r fixture/build/outputs/apk/debug/fixture-debug.apk

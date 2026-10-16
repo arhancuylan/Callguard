@@ -5,11 +5,12 @@ import android.graphics.drawable.Icon;
 
 public final class Calls extends BroadcastReceiver {
     @Override public void onReceive(Context c,Intent intent){
+        android.util.Log.d("FixtureTest","received "+intent.getAction());
         NotificationManager manager=c.getSystemService(NotificationManager.class);
         if("fixture.POST".equals(intent.getAction())){
             c.getSharedPreferences("state",0).edit().putBoolean("declined",false).putBoolean("answered",false).commit();
             manager.createNotificationChannel(new NotificationChannel("calls","CI calls",NotificationManager.IMPORTANCE_HIGH));
-            PendingIntent decline=PendingIntent.getBroadcast(c,1,new Intent(c,Calls.class).setAction("fixture.DECLINE"),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent decline=PendingIntent.getBroadcast(c,1,new Intent(c,Calls.class).setAction("fixture.DECLINE").addFlags(Intent.FLAG_RECEIVER_FOREGROUND),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
             PendingIntent answer=PendingIntent.getBroadcast(c,2,new Intent(c,Calls.class).setAction("fixture.ANSWER"),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
             Person person=new Person.Builder().setName(intent.getStringExtra("name")==null?"Test Caller":intent.getStringExtra("name")).setUri("tel:"+(intent.getStringExtra("number")==null?"+905550001111":intent.getStringExtra("number"))).setImportant(true).build();
             boolean video=intent.getBooleanExtra("video",false);
@@ -18,7 +19,7 @@ public final class Calls extends BroadcastReceiver {
                 .setStyle(Notification.CallStyle.forIncomingCall(person,decline,answer).setIsVideo(video)).build();
             // Actual captured WhatsApp regression: CallStyle plus GROUP_SUMMARY.
             notification.flags|=Notification.FLAG_GROUP_SUMMARY;
-            manager.notify(23,notification);
+            manager.notify(23,notification);android.util.Log.d("FixtureTest","posted call type="+notification.extras.getInt("android.callType")+" video="+notification.extras.get("android.callIsVideo"));
         }else if("fixture.DECLINE".equals(intent.getAction())){
             c.getSharedPreferences("state",0).edit().putBoolean("declined",true).commit();manager.cancel(23);
         }else if("fixture.ANSWER".equals(intent.getAction())){

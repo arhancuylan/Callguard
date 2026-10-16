@@ -31,13 +31,16 @@ public class EndToEndTest {
     private void shell(String command) throws Exception {try(ParcelFileDescriptor p=instrumentation.getUiAutomation().executeShellCommand(command);FileInputStream in=new FileInputStream(p.getFileDescriptor())){byte[] b=new byte[1024];while(in.read(b)!=-1){}}}
     @Before public void before() throws Exception {
         store=new Store(context);store.setting("enabled",false);store.setting("rule","WHITELIST");store.setting("media","BOTH");store.setting("recordOnly",false);store.getWritableDatabase().delete("contacts",null,null);store.clearHistory();
-        shell("am broadcast -a fixture.CLEAR -n com.whatsapp/com.callguard.fixture.Calls");
+        shell("am broadcast --receiver-foreground -a fixture.CLEAR -n com.whatsapp/com.callguard.fixture.Calls");
         shell("cmd notification allow_listener com.callguard.mobile/com.callguard.CallNotificationService");
+        android.service.notification.NotificationListenerService.requestRebind(new ComponentName(context,CallNotificationService.class));
+        long bindEnd=android.os.SystemClock.elapsedRealtime()+8000;while(!CallNotificationService.connected&&android.os.SystemClock.elapsedRealtime()<bindEnd)Thread.sleep(50);
+        assertTrue("Notification listener must be connected before a fresh test call",CallNotificationService.connected);
     }
-    @After public void after() throws Exception {store.setting("enabled",false);shell("am broadcast -a fixture.CLEAR -n com.whatsapp/com.callguard.fixture.Calls");store.close();}
-    private void post(boolean video,String number) throws Exception {shell("am broadcast -a fixture.POST -n com.whatsapp/com.callguard.fixture.Calls --ez video "+video+" --es number "+number);}
+    @After public void after() throws Exception {store.setting("enabled",false);shell("am broadcast --receiver-foreground -a fixture.CLEAR -n com.whatsapp/com.callguard.fixture.Calls");store.close();}
+    private void post(boolean video,String number) throws Exception {shell("am broadcast --receiver-foreground -a fixture.POST -n com.whatsapp/com.callguard.fixture.Calls --ez video "+video+" --es number "+number);}
     private boolean declined(){try(Cursor c=context.getContentResolver().query(Uri.parse("content://com.whatsapp.callguardfixture/state"),null,null,null,null)){assertNotNull(c);assertTrue(c.moveToFirst());assertEquals("Answer must never be invoked",0,c.getInt(1));return c.getInt(0)==1;}}
-    private void awaitRecords(int count) throws Exception {long end=System.currentTimeMillis()+10000;while(System.currentTimeMillis()<end){try(Cursor c=store.history()){if(c.getCount()>=count)return;}Thread.sleep(50);}fail("Listener did not produce "+count+" records");}
+    private void awaitRecords(int count) throws Exception {long end=android.os.SystemClock.elapsedRealtime()+10000;while(android.os.SystemClock.elapsedRealtime()<end){try(Cursor c=store.history()){if(c.getCount()>=count)return;}Thread.sleep(50);}fail("Listener did not produce "+count+" records");}
     private String result(){try(Cursor c=store.history()){assertTrue(c.moveToFirst());return c.getString(3);}}
     @Test public void voiceDeclineTraversesRealAndroidNotificationPipeline() throws Exception {store.setting("enabled",true);post(false,"+905550001111");awaitRecords(1);assertTrue(declined());assertEquals("Reddetme isteği gönderildi",result());}
     @Test public void videoDeclineTraversesRealAndroidNotificationPipeline() throws Exception {store.setting("enabled",true);post(true,"+905550001111");awaitRecords(1);assertTrue(declined());try(Cursor c=store.history()){c.moveToFirst();assertEquals(1,c.getInt(2));}}
@@ -46,7 +49,7 @@ public class EndToEndTest {
     @Test public void blacklistPermitsUnlistedCaller() throws Exception {store.setting("rule","BLACKLIST");store.setting("enabled",true);post(false,"+905550001111");awaitRecords(1);assertFalse(declined());assertEquals("İzin verildi",result());}
     @Test public void allIncomingRuleOverridesWhitelist() throws Exception {store.add("Test Caller","+905550001111",true);store.setting("rule","ALL");store.setting("enabled",true);post(false,"+905550001111");awaitRecords(1);assertTrue(declined());}
     @Test public void recordOnlyDoesNotInvokeDecline() throws Exception {store.setting("recordOnly",true);store.setting("enabled",true);post(false,"+905550001111");awaitRecords(1);assertFalse(declined());assertEquals("Yalnızca kaydedildi",result());assertEquals(0,store.today());}
-    @Test public void mediaSelectionExcludesOtherType() throws Exception {store.setting("media","VOICE");store.setting("enabled",true);post(true,"+905550001111");Thread.sleep(1500);try(Cursor c=store.history()){assertEquals(0,c.getCount());}assertFalse(declined());shell("am broadcast -a fixture.CLEAR -n com.whatsapp/com.callguard.fixture.Calls");post(false,"+905550001111");awaitRecords(1);assertTrue(declined());}
+    @Test public void mediaSelectionExcludesOtherType() throws Exception {store.setting("media","VOICE");store.setting("enabled",true);post(true,"+905550001111");Thread.sleep(1500);try(Cursor c=store.history()){assertEquals(0,c.getCount());}assertFalse(declined());shell("am broadcast --receiver-foreground -a fixture.CLEAR -n com.whatsapp/com.callguard.fixture.Calls");post(false,"+905550001111");awaitRecords(1);assertTrue(declined());}
     @Test public void disabledProtectionDoesNotAct() throws Exception {post(false,"+905550001111");Thread.sleep(1500);assertFalse(declined());try(Cursor c=store.history()){assertEquals(0,c.getCount());}}
     @Test public void duplicateContactsAndLocalPersistence(){store.add("First","05550001111",true);store.add("Updated","+905550001111",true);store.add("Black","+905550001111",false);assertEquals(1,store.contacts().size());assertFalse(store.contacts().get(0).white);try(Store reopened=new Store(context)){assertEquals(1,reopened.contacts().size());}}
     private void nav(String name){onView(withContentDescription(name+" sekmesi")).perform(click());}

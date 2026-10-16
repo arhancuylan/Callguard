@@ -9,12 +9,17 @@ import java.util.*;
 /** Invokes only the verified, WhatsApp-owned Decline action. No Telecom or accessibility route. */
 public final class CallNotificationService extends NotificationListenerService {
     private Store store;
+    static volatile boolean connected;
+    private void trace(String value){if(BuildConfig.DEBUG)android.util.Log.d("CallGuardTest",value);}
+    @Override public void onListenerConnected(){connected=true;trace("listener connected");}
     private final Map<String,Long> processed=new HashMap<>();
     @Override public void onCreate(){super.onCreate();store=new Store(this);}
-    @Override public void onDestroy(){store.close();super.onDestroy();}
-    @Override public void onListenerDisconnected(){requestRebind(new ComponentName(this,CallNotificationService.class));}
+    @Override public void onDestroy(){connected=false;store.close();super.onDestroy();}
+    @Override public void onListenerDisconnected(){connected=false;trace("listener disconnected");requestRebind(new ComponentName(this,CallNotificationService.class));}
     @Override public void onNotificationPosted(StatusBarNotification sbn){
-        if(sbn==null||!store.enabled())return;
+        if(sbn==null)return;
+        trace("posted owner="+sbn.getPackageName()+" enabled="+store.enabled());
+        if(!store.enabled())return;
         String owner=sbn.getPackageName();
         if(!"com.whatsapp".equals(owner)&&!"com.whatsapp.w4b".equals(owner))return;
         Notification n=sbn.getNotification();
@@ -25,6 +30,7 @@ public final class CallNotificationService extends NotificationListenerService {
         Rules.Incoming incoming=Rules.incoming(owner,n.category,(n.flags&Notification.FLAG_GROUP_SUMMARY)!=0,
             String.valueOf(e.getCharSequence(Notification.EXTRA_TEXT,"")),e.getInt("android.callType",0),
             e.containsKey("android.callIsVideo")?e.getBoolean("android.callIsVideo"):null,actions);
+        trace("category="+n.category+" type="+e.getInt("android.callType",0)+" video="+e.get("android.callIsVideo")+" actions="+actions+" incoming="+(incoming!=null));
         if(incoming==null||!Rules.selected(store.media(),incoming.media))return;
         String caller=String.valueOf(e.getCharSequence(Notification.EXTRA_TITLE,""));String uri="";
         if(Build.VERSION.SDK_INT>=28){Person person=e.getParcelable("android.callPerson");if(person!=null){uri=person.getUri();if(person.getName()!=null)caller=person.getName().toString();}}
