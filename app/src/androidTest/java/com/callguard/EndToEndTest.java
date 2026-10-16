@@ -54,7 +54,13 @@ public class EndToEndTest {
             nav("Kişiler");onView(withText("＋  Kişi ekle")).perform(scrollTo(),click());onView(withText("Rehberden seç")).perform(click());
             // Async contacts loading is bounded and then the real picker row is clicked.
             long end=System.currentTimeMillis()+8000;while(true){try{onView(withHint("Rehberde ara")).check(matches(isDisplayed()));break;}catch(androidx.test.espresso.NoMatchingViewException e){if(System.currentTimeMillis()>end)throw e;Thread.sleep(100);}}
-            onView(withText("Rehber Test\n+905550003333")).perform(click());assertTrue(Rules.listed("Rehber Test","",store.contacts(),true));
+            screenshot("06-rehber-beyaz-liste");
+            onView(withText("Rehber Test")).perform(click());assertTrue(Rules.listed("Rehber Test","",store.contacts(),true));
+            onView(withText("Kara liste")).perform(scrollTo(),click());
+            onView(withText("＋  Kişi ekle")).perform(scrollTo(),click());onView(withText("Rehberden seç")).perform(click());
+            end=System.currentTimeMillis()+8000;while(true){try{onView(withHint("Rehberde ara")).check(matches(isDisplayed()));break;}catch(androidx.test.espresso.NoMatchingViewException e){if(System.currentTimeMillis()>end)throw e;Thread.sleep(100);}}
+            onView(withHint("Rehberde ara")).perform(typeText("Rehber"),closeSoftKeyboard());screenshot("07-rehber-kara-liste");
+            onView(withText("Rehber Test")).perform(click());assertTrue(Rules.listed("Rehber Test","",store.contacts(),false));assertFalse(Rules.listed("Rehber Test","",store.contacts(),true));
         } finally {
             instrumentation.getUiAutomation().adoptShellPermissionIdentity(Manifest.permission.WRITE_CONTACTS);
             context.getContentResolver().delete(ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI,rawId),null,null);instrumentation.getUiAutomation().dropShellPermissionIdentity();
