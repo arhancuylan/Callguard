@@ -23,5 +23,6 @@ public class RulesTest {
     private List<Rules.Contact> people(){return Arrays.asList(new Rules.Contact(1,"Ayşe Yılmaz","+905551112233",true),new Rules.Contact(2,"Mehmet Kaya","+905559998877",false));}
     @Test public void contactMatchesNumberOrExactDisplayedName(){assertTrue(Rules.listed("Ayşe Yılmaz","",people(),true));assertTrue(Rules.listed("whatever","tel:+905551112233",people(),true));assertTrue(Rules.listed("0555 111 22 33","",people(),true));}
     @Test public void numberIdentityOverridesMatchingName(){assertFalse(Rules.listed("Ayşe Yılmaz","tel:+905559999999",people(),true));}
+    @Test public void turkishUppercaseContactNamesMatch(){assertTrue(Rules.listed("AYŞE YILMAZ","",people(),true));}
     @Test public void partialNamesAndWrongListDoNotMatch(){assertFalse(Rules.listed("Ayşe","",people(),true));assertFalse(Rules.listed("Mehmet Kaya","",people(),true));assertTrue(Rules.listed("Mehmet Kaya","",people(),false));}
 }

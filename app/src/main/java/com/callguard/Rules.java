@@ -10,7 +10,7 @@ public final class Rules {
     public static String label(String value) {
         if (value == null) return "";
         return Normalizer.normalize(value, Normalizer.Form.NFKD).toLowerCase(Locale.ROOT)
-            .replaceAll("[\\p{M}\\p{Cf}]", "").replaceAll("[\\p{Z}\\s]+", " ").trim();
+            .replaceAll("[\\p{M}\\p{Cf}]", "").replace('ı', 'i').replaceAll("[\\p{Z}\\s]+", " ").trim();
     }
     public static String number(String raw) {
         if (raw == null) return "";
