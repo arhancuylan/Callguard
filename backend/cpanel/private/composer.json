@@ -17,5 +17,13 @@
     "sort-packages": true,
     "allow-plugins": false
   },
-  "license": "proprietary"
+  "license": "proprietary",
+  "scripts": {
+    "pre-autoload-dump": "Google\\Task\\Composer::cleanup"
+  },
+  "extra": {
+    "google/apiclient-services": [
+      "AndroidPublisher"
+    ]
+  }
 }
