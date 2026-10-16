@@ -1,0 +1,1 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"><queries><provider android:authorities="com.whatsapp.callguardfixture"/><package android:name="com.whatsapp"/></queries></manifest>

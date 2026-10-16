@@ -1,0 +1,7 @@
+<!-- Emulated notification producer for isolated CI only. Never distributed. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+<application android:label="CallGuard E2E fixture" android:allowBackup="false">
+<receiver android:name=".Calls" android:exported="true"><intent-filter><action android:name="fixture.POST"/><action android:name="fixture.DECLINE"/><action android:name="fixture.ANSWER"/><action android:name="fixture.CLEAR"/></intent-filter></receiver>
+<provider android:name=".State" android:authorities="com.whatsapp.callguardfixture" android:exported="true"/>
+</application></manifest>

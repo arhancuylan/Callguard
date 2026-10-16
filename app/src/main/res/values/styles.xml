@@ -1,1 +1,9 @@
-<resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#166B53</item><item name="android:windowLightStatusBar">true</item><item name="android:statusBarColor">#F4F7F5</item><item name="android:navigationBarColor">#166B53</item><item name="android:windowActionModeOverlay">true</item></style><string name="service_description">WhatsApp arama ekranındaki arayan bilgisi ve düğmeleri okuyarak izin listenizi uygular. Mesajlar kaydedilmez. Servisi istediğiniz zaman kapatabilirsiniz.</string></resources>
+<resources>
+<style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+<item name="android:fontFamily">sans</item><item name="android:colorAccent">#08634E</item>
+<item name="android:windowLightStatusBar">true</item><item name="android:statusBarColor">#F5F7F4</item>
+<item name="android:windowLightNavigationBar">true</item><item name="android:navigationBarColor">#F5F7F4</item>
+<item name="android:windowActionModeOverlay">true</item>
+<item name="android:windowLayoutInDisplayCutoutMode">default</item>
+</style>
+</resources>
