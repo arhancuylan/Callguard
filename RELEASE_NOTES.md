@@ -5,3 +5,5 @@ Modern rehber ekranında kişiler rehber kimliğine göre gruplanır. Kişiye do
 WhatsApp yalnızca görünen adı bildirirse aynı kişinin farklı numaraları ayırt edilemeyebilir; numaraya göre kesin ayrım için çağrı bildiriminde numara bulunmalıdır.
 
 Mevcut sürümün üzerine kurulur; listeler, geçmiş ve ayarlar korunur. Çağrı reddetme yöntemi değişmedi.
+
+Kullanıcı talebiyle bu sürümde uzun emülatör testleri atlandı. Hızlı birim testleri, lint, derleme ve önceki sürümle imza karşılaştırması yapılır; gerçek cihaz testi kullanıcı tarafından yapılacaktır.
