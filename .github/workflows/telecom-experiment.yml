@@ -21,11 +21,24 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Preserve the experimental debug signing key for subsequent test builds
-        uses: actions/cache@v4
+      - name: Restore the explicit experimental signing key
+        id: signing-key
+        uses: actions/cache/restore@v4
         with:
-          path: ~/.android/debug.keystore
-          key: telecom-experiment-debug-key-v1
+          path: .ci-signing/telecom-test.keystore
+          key: telecom-test-signing-v2
+      - name: Create experimental signing key only if missing
+        run: |
+          mkdir -p .ci-signing
+          if [ ! -f .ci-signing/telecom-test.keystore ]; then
+            keytool -genkeypair -keystore .ci-signing/telecom-test.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=CallGuard Experimental,O=Android,C=TR"
+          fi
+      - name: Save the experimental signing key
+        if: steps.signing-key.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .ci-signing/telecom-test.keystore
+          key: telecom-test-signing-v2
       - name: Test, lint and compile the experiment
         run: |
           gradle --no-daemon :probe:testDebugUnitTest :probe:lintDebug :probe:assembleDebug || { cat probe/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt 2>/dev/null; exit 1; }
