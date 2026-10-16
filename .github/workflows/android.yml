@@ -55,8 +55,10 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Android 35 end-to-end tests
+        timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@v2
         with:
+          emulator-boot-timeout: 180
           api-level: 35
           target: google_apis
           arch: x86_64

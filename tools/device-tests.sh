@@ -10,7 +10,7 @@ adb shell settings put system system_locales tr-TR
 adb shell wm size 1080x2400
 adb shell wm density 420
 adb logcat -c
-adb shell am instrument -w -r com.callguard.mobile.test/androidx.test.runner.AndroidJUnitRunner | tee evidence/instrumentation.txt
+timeout 300s adb shell am instrument -w -r -e timeout_msec 30000 com.callguard.mobile.test/androidx.test.runner.AndroidJUnitRunner | tee evidence/instrumentation.txt
 adb logcat -d -s AndroidRuntime:E > evidence/crashes.txt
 adb pull /sdcard/Android/data/com.callguard.mobile/files/screenshots evidence/ || true
 if ! grep -q 'OK (' evidence/instrumentation.txt; then exit 1; fi
