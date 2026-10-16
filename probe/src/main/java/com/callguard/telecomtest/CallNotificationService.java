@@ -27,9 +27,12 @@ public final class CallNotificationService extends NotificationListenerService {
         Boolean isVideo=extras.containsKey(Notification.EXTRA_CALL_IS_VIDEO)?extras.getBoolean(Notification.EXTRA_CALL_IS_VIDEO):null;
         List<String> labels=new ArrayList<>();
         if(n.actions!=null)for(Notification.Action a:n.actions)labels.add(a==null?"":String.valueOf(a.title));
-        int index=NotificationRule.declineIndex(pkg,n.category,(n.flags&Notification.FLAG_GROUP_SUMMARY)!=0,text,type,isVideo,labels);
+        boolean summary=(n.flags&Notification.FLAG_GROUP_SUMMARY)!=0;
+        NotificationRule.Result result=NotificationRule.analyze(pkg,n.category,summary,text,type,isVideo,labels);
+        int index=result.index;
+        List<String> normalized=new ArrayList<>();for(String actionLabel:labels)normalized.add(NotificationRule.label(actionLabel));
         // Only coarse metadata and action titles enter logs; no caller/message text.
-        once(key,"ÇAĞRI BİLDİRİMİ: id="+sbn.getId()+", tür="+type+", video="+isVideo+", eylemler="+labels+", doğrulanan reddet="+index);
+        once(key,"ÇAĞRI BİLDİRİMİ: id="+sbn.getId()+", tür="+type+", video="+isVideo+", eylemler="+labels+", normalize="+normalized+", özet="+summary+", karar="+result.reason+", doğrulanan reddet="+index);
         if(index<0)return;
         if(!ProbeState.prefs(this).getBoolean("armed",false)){once(key,"BİLDİRİM: gelen sesli çağrı + reddet eylemi doğrulandı · yalnızca gözlem");return;}
         Set<String> allowed=ProbeState.allowed(this);

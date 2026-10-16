@@ -26,7 +26,7 @@ public final class ProbeActivity extends Activity {
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff4f7f5);
         scroll.setOnApplyWindowInsetsListener((v,i)->{v.setPadding(i.getSystemWindowInsetLeft(),i.getSystemWindowInsetTop(),i.getSystemWindowInsetRight(),i.getSystemWindowInsetBottom());return i;});
         body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(22),dp(16),dp(22),dp(24));scroll.addView(body);setContentView(scroll);
-        body.addView(label("CallGuard · Bildirim Test 0.2.5",25));
+        body.addView(label("CallGuard · Bildirim Test 0.2.6",25));
         body.addView(label("DENEYSEL · WhatsApp aramaları için cihaz testi\nBu uygulama eski CallGuard'dan ayrı kurulur. Yeni bildirim yöntemi, WhatsApp çağrı bildirimindeki reddet eylemini çalıştırmayı dener. Bildirim erişimi gerekir; saat gerekmez. Yeni sürüm ilk açılışta yalnızca gözlem moduna geçer.",15));
         if(!ProbeState.prefs(this).getBoolean("notification_migration",false)){
             ProbeState.prefs(this).edit().putString("command","notification").putBoolean("armed",false).putBoolean("notification_migration",true).apply();
