@@ -25,13 +25,27 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Restore the established signing key
+      - name: Restore the final app signing key
         id: signing
         uses: actions/cache/restore@v4
         with:
-          path: .ci-signing/telecom-test.keystore
-          key: telecom-test-signing-v2
-          fail-on-cache-miss: true
+          path: .ci-signing/callguard-final.keystore
+          key: callguard-final-signing-v1
+      - name: Initialize signing for the new application ID only once
+        if: steps.signing.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh release list --json tagName --jq '.[] | select(.tagName | startswith("v1.")) | .tagName')
+          if [ -n "$existing" ]; then echo 'Existing final releases found; refusing to rotate the signing key.'; exit 1; fi
+          mkdir -p .ci-signing
+          keytool -genkeypair -keystore .ci-signing/callguard-final.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 3072 -validity 10000 -dname "CN=CallGuard by AC,O=CallGuard,C=TR"
+      - name: Preserve the final app signing key
+        if: steps.signing.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .ci-signing/callguard-final.keystore
+          key: callguard-final-signing-v1
       - name: Unit tests, lint and APK builds
         run: |
           gradle --no-daemon :app:testDebugUnitTest :app:lintDebug :app:lintRelease :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :fixture:assembleDebug || { cat app/build/intermediates/lint_intermediate_text_report/*/*/*.txt 2>/dev/null; exit 1; }

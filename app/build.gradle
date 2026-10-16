@@ -13,7 +13,7 @@ android {
     }
     signingConfigs {
         distribution {
-            storeFile rootProject.file('.ci-signing/telecom-test.keystore')
+            storeFile rootProject.file('.ci-signing/callguard-final.keystore')
             storePassword 'android'
             keyAlias 'androiddebugkey'
             keyPassword 'android'
