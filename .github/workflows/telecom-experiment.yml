@@ -21,6 +21,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Preserve the experimental debug signing key for subsequent test builds
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: telecom-experiment-debug-key-v1
       - name: Test, lint and compile the experiment
         run: |
           gradle --no-daemon :probe:testDebugUnitTest :probe:lintDebug :probe:assembleDebug || { cat probe/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt 2>/dev/null; exit 1; }

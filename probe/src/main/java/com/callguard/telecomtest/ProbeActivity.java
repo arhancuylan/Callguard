@@ -5,6 +5,8 @@ import android.os.*;
 import android.content.*;
 import android.content.pm.PackageManager;
 import android.companion.*;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
 import android.view.*;
 import android.widget.*;
 import java.util.*;
@@ -53,12 +55,31 @@ public final class ProbeActivity extends Activity {
             ProbeState.prefs(this).edit().putBoolean("armed",false).apply();if(manager!=null)for(AssociationInfo a:manager.getMyAssociations())manager.disassociate(a.getId());render();}).show());
         body.addView(label("Sonuç henüz doğrulanmadı. Bildirimler kapalıyken, ekran kilitliyken ve saat bağlantısı kesilince ayrı test gerekir. Sesli/görüntülü ayrımı Telecom bilgisinin doğruluğuna bağlıdır. Eski CallGuard erişilebilirlik servisini bu test sırasında kapat.",14));
     }
-    private void pairWithPermission(){if(checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},20);return;}pair();}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==20&&grants.length>0&&grants[0]==PackageManager.PERMISSION_GRANTED)pair();}
-    private void pair(){
+    private void pairWithPermission(){if(checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},20);return;}chooseBondedWatch();}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==20&&grants.length>0&&grants[0]==PackageManager.PERMISSION_GRANTED)chooseBondedWatch();}
+    private void chooseBondedWatch(){
+        if(checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)return;
+        BluetoothManager bluetooth=getSystemService(BluetoothManager.class);
+        if(bluetooth==null||bluetooth.getAdapter()==null){Toast.makeText(this,"Bluetooth bu cihazda kullanılamıyor",Toast.LENGTH_LONG).show();return;}
+        try{
+            if(!bluetooth.getAdapter().isEnabled()){Toast.makeText(this,"Önce telefonun Bluetooth bağlantısını aç",Toast.LENGTH_LONG).show();return;}
+            List<BluetoothDevice> devices=new ArrayList<>(bluetooth.getAdapter().getBondedDevices());
+            if(devices.isEmpty()){ProbeState.log(this,"Eşleşmiş Bluetooth cihazı bulunamadı");render();return;}
+            String[] names=new String[devices.size()];
+            for(int i=0;i<devices.size();i++){
+                BluetoothDevice device=devices.get(i);
+                String name=device.getName();String address=device.getAddress();
+                names[i]=(name==null?"Adsız eşleşmiş cihaz":name)+" · …"+address.substring(Math.max(0,address.length()-5));
+            }
+            new AlertDialog.Builder(this).setTitle("Eşleşmiş cihazlardan saatini seç")
+                .setItems(names,(dialog,index)->pair(devices.get(index).getAddress()))
+                .setNegativeButton("Vazgeç",null).show();
+        }catch(SecurityException e){ProbeState.log(this,"Eşleşmiş cihazları okuma izni kaldırılmış");render();}
+    }
+    private void pair(String address){
         CompanionDeviceManager manager=getSystemService(CompanionDeviceManager.class);
         if(manager==null){ProbeState.log(this,"CompanionDeviceManager bu cihazda yok");render();return;}
-        AssociationRequest request=new AssociationRequest.Builder().addDeviceFilter(new BluetoothDeviceFilter.Builder().build()).setDeviceProfile(AssociationRequest.DEVICE_PROFILE_WATCH).build();
+        AssociationRequest request=new AssociationRequest.Builder().addDeviceFilter(new BluetoothDeviceFilter.Builder().setAddress(address).build()).setSingleDevice(true).setDeviceProfile(AssociationRequest.DEVICE_PROFILE_WATCH).build();
         try{manager.associate(request,getMainExecutor(),new CompanionDeviceManager.Callback(){
             @Override public void onAssociationPending(IntentSender sender){openChooser(sender);}
             @Override public void onDeviceFound(IntentSender sender){openChooser(sender);}
