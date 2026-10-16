@@ -1,1 +1,7 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"><queries><provider android:authorities="com.whatsapp.callguardfixture"/><package android:name="com.whatsapp"/></queries></manifest>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<queries><provider android:authorities="com.whatsapp.callguardfixture"/><package android:name="com.whatsapp"/></queries>
+<application>
+<receiver android:name=".TestControlReceiver" android:exported="true" android:permission="android.permission.DUMP"/>
+<provider android:name=".TestStateProvider" android:authorities="com.callguard.mobile.teststate" android:exported="true" android:readPermission="android.permission.DUMP" android:writePermission="android.permission.DUMP"/>
+</application>
+</manifest>
