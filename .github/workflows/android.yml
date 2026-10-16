@@ -88,25 +88,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         if: always() && steps.build.conclusion == 'success'
         run: |
-          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.0.1.apk
-          sha256sum CallGuard-1.0.1.apk > CallGuard-1.0.1.apk.sha256
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.0.1.apk
+          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.0.2.apk
+          sha256sum CallGuard-1.0.2.apk > CallGuard-1.0.2.apk.sha256
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.0.2.apk
           gh release download v1.0.0 --pattern CallGuard-1.0.0.apk --dir previous
           signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           previous_cert=$("$signer" verify --print-certs previous/CallGuard-1.0.0.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
-          current_cert=$("$signer" verify --print-certs CallGuard-1.0.1.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
+          current_cert=$("$signer" verify --print-certs CallGuard-1.0.2.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
           test -n "$previous_cert"
           test "$previous_cert" = "$current_cert"
           echo 'Update signing certificate matches version 1.0.0.' 
       - uses: actions/upload-artifact@v4
         if: always() && steps.build.conclusion == 'success'
         with:
-          name: CallGuard-1.0.1
+          name: CallGuard-1.0.2
           path: |
-            CallGuard-1.0.1.apk
-            CallGuard-1.0.1.apk.sha256
+            CallGuard-1.0.2.apk
+            CallGuard-1.0.2.apk.sha256
       - name: Publish APK after required checks; call integration can be validated on the phone
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v1.0.1" CallGuard-1.0.1.apk CallGuard-1.0.1.apk.sha256 --title "CallGuard 1.0.1 · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --latest
+          gh release create "v1.0.2" CallGuard-1.0.2.apk CallGuard-1.0.2.apk.sha256 --title "CallGuard 1.0.2 · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --latest

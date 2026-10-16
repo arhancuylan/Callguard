@@ -1,7 +1,7 @@
-CallGuard 1.0.1 · Call Guard by AC
+CallGuard 1.0.2 · Call Guard by AC
 
-Alt menüde Koruma, Kişiler, Geçmiş ve Ayarlar yazıları simgelerinin altında ortalandı.
+- Peş peşe aramalarda aynı WhatsApp bildirim kimliğinin 15 saniye boyunca atlanmasına yol açan kontrol kaldırıldı. Aynı çağrının tekrar bildirimleri çağrı başlangıcı, reddetme eylemi ve geçerli kararla ayırt edilir.
+- Tüm gelen aramaları reddet kararı kişi listelerinden bağımsız değerlendirilir. Kural seçimine hem daireye hem satıra dokunarak ulaşılır ve seçim hemen yenilenir.
+- Seçilen ses/video kapsamının dışında kalan algılanmış çağrılar da geçmişte açıklanır.
 
-Mevcut 1.0.0 sürümünün üzerine yüklenebilir; aynı uygulama kimliği ve imza kullanılır. Listeler ve ayarlar korunur.
-
-Bu arayüz düzeltmesi birim testleri, Android lint, APK derleme ve önceki sürümle imza eşleşmesi kontrollerinden sonra yayımlanır. Yeni çağrı testi yapılmadı.
+Mevcut sürümün üzerine kurulur; listeler ve ayarlar korunur. Birim testleri, Android lint, derleme ve önceki sürümle imza karşılaştırması CI üzerinde yapılır. Bu sürümde gerçek WhatsApp çağrısı cihazda denenmedi; bildirilen sorunun kesin nedeni henüz doğrulanmadı.
