@@ -52,9 +52,11 @@ public final class MainActivity extends Activity {
     private boolean access(){String value=Settings.Secure.getString(getContentResolver(),"enabled_notification_listeners");if(value==null)return false;ComponentName expected=new ComponentName(this,CallNotificationService.class);for(String item:value.split(":")){if(expected.equals(ComponentName.unflattenFromString(item)))return true;}return false;}
     private void render(){
         if(isFinishing())return;rendering=true;
-        root=column();root.setBackgroundColor(BG);
-        root.setOnApplyWindowInsetsListener((view,insets)->{view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});
-        setContentView(root);root.requestApplyInsets();
+        if(root==null){
+            root=column();root.setBackgroundColor(BG);
+            root.setOnApplyWindowInsetsListener((view,insets)->{view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});
+            setContentView(root);root.requestApplyInsets();
+        } else root.removeAllViews();
         scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);
         body=column();body.setPadding(dp(22),dp(20),dp(22),dp(18));scroll.addView(body,new ScrollView.LayoutParams(-1,-2));root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         if(tab==0)home();else if(tab==1)people();else if(tab==2)history();else settings();
@@ -76,7 +78,7 @@ public final class MainActivity extends Activity {
         rule(rules,"Beyaz liste","Yalnızca izin verdiklerin ulaşabilsin.",Rules.Mode.WHITELIST);
         rule(rules,"Kara liste","Yalnızca listedeki kişileri reddet.",Rules.Mode.BLACKLIST);
         LinearLayout stats=row();List<Rules.Contact> contacts=store.contacts();int count=0;boolean showWhite=store.mode()!=Rules.Mode.BLACKLIST;for(Rules.Contact c:contacts)if(c.white==showWhite)count++;
-        stats.addView(stat("people",String.valueOf(count),showWhite?"İzin verilen kişi":"Kara listedeki kişi"),new LinearLayout.LayoutParams(0,-1,1));View spacer=new View(this);stats.addView(spacer,new LinearLayout.LayoutParams(dp(12),1));stats.addView(stat("phone",String.valueOf(store.today()),"Bugünkü reddetme isteği"),new LinearLayout.LayoutParams(0,-1,1));body.addView(stats);gap(body,13);
+        stats.addView(stat("people",String.valueOf(count),showWhite?"İzin verilen kişi":"Kara listedeki kişi"),new LinearLayout.LayoutParams(0,-2,1));View spacer=new View(this);stats.addView(spacer,new LinearLayout.LayoutParams(dp(12),1));stats.addView(stat("phone",String.valueOf(store.today()),"Bugünkü reddetme isteği"),new LinearLayout.LayoutParams(0,-2,1));body.addView(stats);gap(body,13);
         body.addView(button("Kişileri düzenle    ›",true,()->{white=store.mode()!=Rules.Mode.BLACKLIST;tab=1;render();}));gap(body,10);
         TextView notice=text("ⓘ  Bağlı cihazlarda kısa süreli zil duyulabilir.",12,GREEN,false);notice.setPadding(dp(12),dp(11),dp(12),dp(11));notice.setBackground(bg(Color.rgb(230,242,231),12));body.addView(notice);
     }
