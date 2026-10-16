@@ -60,7 +60,7 @@ public final class MainActivity extends Activity {
         if(tab==0)home();else if(tab==1)people();else if(tab==2)history();else settings();
         nav=row();nav.setPadding(dp(8),dp(9),dp(8),dp(10));nav.setBackgroundColor(Color.WHITE);
         String[] names={"Koruma","Kişiler","Geçmiş","Ayarlar"};String[] icons={"shield","people","clock","settings"};
-        for(int j=0;j<4;j++){final int index=j;LinearLayout item=column();item.setGravity(Gravity.CENTER);item.setPadding(dp(2),dp(2),dp(2),dp(2));item.addView(icon(icons[j],j==tab?GREEN:MUTED,23));gap(item,5);item.addView(text(names[j],12,j==tab?GREEN:MUTED,j==tab));item.setContentDescription(names[j]+" sekmesi");item.setFocusable(true);item.setOnClickListener(v->{tab=index;render();});nav.addView(item,new LinearLayout.LayoutParams(0,dp(56),1));}
+        for(int j=0;j<4;j++){final int index=j;LinearLayout item=column();item.setGravity(Gravity.CENTER);item.setPadding(dp(2),dp(2),dp(2),dp(2));item.addView(icon(icons[j],j==tab?GREEN:MUTED,23));gap(item,5);TextView label=text(names[j],12,j==tab?GREEN:MUTED,j==tab);label.setGravity(Gravity.CENTER);item.addView(label,new LinearLayout.LayoutParams(-1,-2));item.setContentDescription(names[j]+" sekmesi");item.setFocusable(true);item.setOnClickListener(v->{tab=index;render();});nav.addView(item,new LinearLayout.LayoutParams(0,dp(56),1));}
         root.addView(nav,new LinearLayout.LayoutParams(-1,-2));rendering=false;
     }
     private void home(){
