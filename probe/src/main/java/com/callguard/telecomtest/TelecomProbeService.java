@@ -5,7 +5,7 @@ import android.content.*;
 import java.util.*;
 
 public final class TelecomProbeService extends InCallService {
-    private static final String SESSION=UUID.randomUUID().toString().substring(0,6);
+    private final String SESSION=UUID.randomUUID().toString().substring(0,6);
     private final Map<Call,Trace> tracked=new IdentityHashMap<>();
     private final Handler handler=new Handler(Looper.getMainLooper());
     private int sequence=0;
@@ -92,18 +92,19 @@ public final class TelecomProbeService extends InCallService {
         android.companion.CompanionDeviceManager manager=getSystemService(android.companion.CompanionDeviceManager.class);
         if(manager==null||manager.getMyAssociations().isEmpty()||!ProbeAccess.canManageCalls(this)){once(t,"Çağrı görüldü; eşleştirme veya Telecom erişimi eksik. Komut gönderilmedi.");return;}
         t.attempted=true;t.requested=SystemClock.elapsedRealtime();
-        write(t,"REJECT ÇAĞRILMADAN ÖNCE: mevcut="+state(c.getState())+", details="+state(d.getState())+", Telecom erişimi=true");
+        String command=ProbeState.prefs(this).getString("command","reject");
+        write(t,"KOMUT="+command+" · ÇAĞRILMADAN ÖNCE: mevcut="+state(c.getState())+", details="+state(d.getState())+", Telecom erişimi=true");
         try{
-            c.reject(false,null);
+            if("disconnect".equals(command))c.disconnect();else c.reject(false,null);
             t.returned=true;
-            write(t,"REJECT API DÖNDÜ: mevcut="+state(c.getState())+" · komutun kabul veya uygulanma onayı değildir");
+            write(t,"KOMUT="+command+" · API DÖNDÜ: mevcut="+state(c.getState())+" · komutun kabul veya uygulanma onayı değildir");
             for(long delay:new long[]{1000,3000,10000}){
                 handler.postDelayed(()->{
                     if(tracked.get(c)!=t)return;
                     write(t,"KOMUT SONRASI KONTROL: "+delay+"ms hedefi, gerçek="+(SystemClock.elapsedRealtime()-t.requested)+"ms, mevcut="+state(c.getState())+", details="+state(c.getDetails().getState())+" · devam ediyorsa reddetme doğrulanmadı");
                 },delay);
             }
-        }catch(SecurityException|IllegalStateException e){write(t,"REJECT HATASI: "+e.getClass().getSimpleName());}
+        }catch(SecurityException|IllegalStateException e){write(t,"KOMUT="+command+" · HATA: "+e.getClass().getSimpleName());}
     }
     @Override public void onCallRemoved(Call c){
         Trace t=tracked.get(c);

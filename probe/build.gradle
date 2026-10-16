@@ -6,8 +6,8 @@ android {
         applicationId 'com.callguard.telecomtest'
         minSdk 33
         targetSdk 35
-        versionCode 4
-        versionName '0.2.3-experiment'
+        versionCode 5
+        versionName '0.2.4-experiment'
     }
     signingConfigs {
         diagnostic {

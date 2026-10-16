@@ -26,16 +26,30 @@ public final class ProbeActivity extends Activity {
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff4f7f5);
         scroll.setOnApplyWindowInsetsListener((v,i)->{v.setPadding(i.getSystemWindowInsetLeft(),i.getSystemWindowInsetTop(),i.getSystemWindowInsetRight(),i.getSystemWindowInsetBottom());return i;});
         body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(22),dp(16),dp(22),dp(24));scroll.addView(body);setContentView(scroll);
-        body.addView(label("CallGuard · Telecom Test 0.2.3",25));
+        body.addView(label("CallGuard · Telecom Test 0.2.4",25));
         body.addView(label("DENEYSEL · WhatsApp aramaları için cihaz testi\nBu uygulama eski CallGuard'dan ayrı kurulur. Erişilebilirlik veya bildirim okuma izni kullanmaz. İlk mod yalnızca gözlemdir.",15));
         CompanionDeviceManager manager=getSystemService(CompanionDeviceManager.class);
         int count=manager==null?0:manager.getMyAssociations().size();
         boolean access=ProbeAccess.canManageCalls(this);
         body.addView(label("Bu uygulamaya eşlenen cihaz: "+count+"\nAndroid çağrı yönetimi izni: "+(access?"verildi":"verilmedi"),16));
         button("1 · Watch 6 Classic ile ilişkilendir",()->new AlertDialog.Builder(this).setTitle("Saat ile ilişkilendirme").setMessage("Android'in kendi cihaz seçicisinde gerçek Watch 6 Classic saatini seç. CallGuard, bu yardımcı cihaz ilişkisi üzerinden Telecom çağrı yönetimine erişmeyi deneyecek. Saatin Galaxy Wearable bağlantısı CallGuard'a otomatik yetki vermez. Sistem izin vermezse deney çalışmaz. Eşleştirmeyi kaldırmak deneyi durdurur; Galaxy Wearable eşleştirmesini silme.").setNegativeButton("Vazgeç",null).setPositiveButton("Cihaz seç",(d,w)->pairWithPermission()).show());
+        body.addView(label("Denenecek çağrı komutu",18));
+        RadioGroup commands=new RadioGroup(this);
+        RadioButton rejectCommand=new RadioButton(this);rejectCommand.setId(View.generateViewId());rejectCommand.setText("Reject · önceki yöntem");
+        RadioButton disconnectCommand=new RadioButton(this);disconnectCommand.setId(View.generateViewId());disconnectCommand.setText("Disconnect · alternatif deneme");
+        commands.addView(rejectCommand);commands.addView(disconnectCommand);
+        commands.check(ProbeState.prefs(this).getString("command","reject").equals("disconnect")?disconnectCommand.getId():rejectCommand.getId());
+        commands.setOnCheckedChangeListener((g,id)->{
+            String command=id==disconnectCommand.getId()?"disconnect":"reject";
+            ProbeState.prefs(this).edit().putString("command",command).putBoolean("armed",false).apply();
+            ProbeState.log(this,"Komut seçildi: "+command+" · otomatik işlem kapatıldı; yeniden açmak gerekir");
+            render();
+        });
+        body.addView(commands);
+        body.addView(label("Disconnect, yalnızca hâlâ çalan ve izin listesi dışında kalan gelen WhatsApp sesli çağrısında denenir. Çağrı yanıtlanmaz. Etkinliği doğrulanmadı. Yöntem değişince otomatik işlem kapanır.",14));
         Switch armed=new Switch(this);armed.setText("2 · Otomatik reddetmeyi aç");armed.setPadding(0,dp(16),0,dp(16));armed.setChecked(ProbeState.prefs(this).getBoolean("armed",false));
         armed.setOnCheckedChangeListener((v,on)->{
-            if(on){armed.setChecked(false);new AlertDialog.Builder(this).setTitle("Reddetme denemesini aç?").setMessage("Açıkken izin listesi dışındaki algılanan gelen WhatsApp sesli aramalarına reddetme komutu gönderilir. Boş izin listesi tüm algılanan gelen sesli aramaları hedefler. Önce gözlem modunda çağrı olayının geldiğini doğrula. SIM aramalarına işlem yapılmaz.").setNegativeButton("Vazgeç",null).setPositiveButton("Denemeyi aç",(d,w)->{ProbeState.prefs(this).edit().putBoolean("armed",true).apply();ProbeState.log(this,"Otomatik reddetme kullanıcı tarafından açıldı");render();}).show();}
+            if(on){armed.setChecked(false);new AlertDialog.Builder(this).setTitle("Reddetme denemesini aç?").setMessage("Açıkken izin listesi dışındaki algılanan gelen WhatsApp sesli aramalarına seçtiğin reject/disconnect komutu gönderilir. Boş izin listesi tüm algılanan gelen sesli aramaları hedefler. Önce gözlem modunda çağrı olayının geldiğini doğrula. SIM aramalarına işlem yapılmaz.").setNegativeButton("Vazgeç",null).setPositiveButton("Denemeyi aç",(d,w)->{ProbeState.prefs(this).edit().putBoolean("armed",true).apply();ProbeState.log(this,"Otomatik reddetme kullanıcı tarafından açıldı");render();}).show();}
             else{ProbeState.prefs(this).edit().putBoolean("armed",false).apply();}
         });body.addView(armed);
         body.addView(label("İzin listesi · tam uluslararası numara",18));
