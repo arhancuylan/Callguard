@@ -1,0 +1,32 @@
+name: Publish CallGuard 1.0 verified APK
+on:
+  push:
+    branches: [release-v1]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve the exact signed build and its test evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/arhancuylan/Callguard/actions/artifacts/12072122626/zip > apk.zip
+          gh api repos/arhancuylan/Callguard/actions/artifacts/12071992664/zip > proof.zip
+          unzip -q apk.zip -d dist
+          unzip -q proof.zip -d proof
+          gh api repos/arhancuylan/Callguard/actions/runs/38959372265/jobs --jq '.jobs[0].steps[] | select(.name == "Unit tests, lint and APK builds") | .conclusion' > build-status.txt
+          grep -qx success build-status.txt
+          grep -q 'OK (6 tests)' proof/evidence/instrumentation.txt
+          grep -q 'Status: ok' proof/evidence/release-launch.txt
+          cd dist
+          sha256sum --check CallGuard-1.0.0.apk.sha256
+      - name: Publish the signed APK for phone validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v1.0.0 dist/CallGuard-1.0.0.apk dist/CallGuard-1.0.0.apk.sha256 --title "CallGuard 1.0.0 · by AC" --notes-file RELEASE_NOTES.md --target 070c5b9061ae0f7c4e7d80b25208cf76878f5f5c --latest
