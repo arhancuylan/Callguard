@@ -44,7 +44,7 @@ public final class TelecomProbeService extends InCallService {
         if(decision==CallRule.Decision.UNKNOWN_WITH_ALLOWLIST){once(c,"Numara okunamadı; izinli kişiyi engellememek için işlem yapılmadı");return;}
         // Require the real watch association and OS permission immediately before acting.
         android.companion.CompanionDeviceManager manager=getSystemService(android.companion.CompanionDeviceManager.class);
-        if(manager==null||manager.getMyAssociations().isEmpty()||checkSelfPermission(android.Manifest.permission.MANAGE_ONGOING_CALLS)!=android.content.pm.PackageManager.PERMISSION_GRANTED){once(c,"Çağrı görüldü; eşleştirme veya çağrı yönetim izni eksik. Reddedilmedi.");return;}
+        if(manager==null||manager.getMyAssociations().isEmpty()||!ProbeAccess.canManageCalls(this)){once(c,"Çağrı görüldü; eşleştirme veya çağrı yönetim izni eksik. Reddedilmedi.");return;}
         attempted.add(c);
         try{c.reject(false,null);ProbeState.log(this,"Reddetme isteği gönderildi; kapanma olayı bekleniyor");}
         catch(SecurityException|IllegalStateException e){ProbeState.log(this,"Reddetme isteği başarısız: "+e.getClass().getSimpleName());}

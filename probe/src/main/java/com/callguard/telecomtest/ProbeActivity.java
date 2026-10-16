@@ -26,11 +26,11 @@ public final class ProbeActivity extends Activity {
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff4f7f5);
         scroll.setOnApplyWindowInsetsListener((v,i)->{v.setPadding(i.getSystemWindowInsetLeft(),i.getSystemWindowInsetTop(),i.getSystemWindowInsetRight(),i.getSystemWindowInsetBottom());return i;});
         body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(22),dp(16),dp(22),dp(24));scroll.addView(body);setContentView(scroll);
-        body.addView(label("CallGuard · Telecom Test",25));
+        body.addView(label("CallGuard · Telecom Test 0.2.2",25));
         body.addView(label("DENEYSEL · WhatsApp aramaları için cihaz testi\nBu uygulama eski CallGuard'dan ayrı kurulur. Erişilebilirlik veya bildirim okuma izni kullanmaz. İlk mod yalnızca gözlemdir.",15));
         CompanionDeviceManager manager=getSystemService(CompanionDeviceManager.class);
         int count=manager==null?0:manager.getMyAssociations().size();
-        boolean access=checkSelfPermission(Manifest.permission.MANAGE_ONGOING_CALLS)==PackageManager.PERMISSION_GRANTED;
+        boolean access=ProbeAccess.canManageCalls(this);
         body.addView(label("Bu uygulamaya eşlenen cihaz: "+count+"\nAndroid çağrı yönetimi izni: "+(access?"verildi":"verilmedi"),16));
         button("1 · Watch 6 Classic ile ilişkilendir",()->new AlertDialog.Builder(this).setTitle("Saat ile ilişkilendirme").setMessage("Android'in kendi cihaz seçicisinde gerçek Watch 6 Classic saatini seç. CallGuard, bu yardımcı cihaz ilişkisi üzerinden Telecom çağrı yönetimine erişmeyi deneyecek. Saatin Galaxy Wearable bağlantısı CallGuard'a otomatik yetki vermez. Sistem izin vermezse deney çalışmaz. Eşleştirmeyi kaldırmak deneyi durdurur; Galaxy Wearable eşleştirmesini silme.").setNegativeButton("Vazgeç",null).setPositiveButton("Cihaz seç",(d,w)->pairWithPermission()).show());
         Switch armed=new Switch(this);armed.setText("2 · Otomatik reddetmeyi aç");armed.setPadding(0,dp(16),0,dp(16));armed.setChecked(ProbeState.prefs(this).getBoolean("armed",false));
