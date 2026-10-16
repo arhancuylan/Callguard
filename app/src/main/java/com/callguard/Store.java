@@ -24,7 +24,13 @@ public final class Store extends SQLiteOpenHelper {
         String normalized=Rules.number(number);
         if(normalized.isEmpty())throw new IllegalArgumentException("Geçerli bir numara yaz: +905xxxxxxxxx");
         ContentValues v=new ContentValues();v.put("name",name.trim().isEmpty()?normalized:name.trim());v.put("number",normalized);v.put("white",white?1:0);
-        getWritableDatabase().insertWithOnConflict("contacts",null,v,SQLiteDatabase.CONFLICT_REPLACE); changed();
+        SQLiteDatabase db=getWritableDatabase();db.beginTransaction();
+        try {
+            db.delete("contacts","number=? AND white<>?",new String[]{normalized,white?"1":"0"});
+            db.insertWithOnConflict("contacts",null,v,SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {db.endTransaction();}
+        changed();
     }
     public List<Rules.Contact> contacts() {
         List<Rules.Contact> values=new ArrayList<>();
