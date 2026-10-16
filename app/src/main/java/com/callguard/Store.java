@@ -20,17 +20,13 @@ public final class Store extends SQLiteOpenHelper {
     public boolean recordOnly() {return prefs().getBoolean("recordOnly",false);}
     public void setting(String key,String value) {prefs().edit().putString(key,value).apply(); changed();}
     public void setting(String key,boolean value) {prefs().edit().putBoolean(key,value).apply(); changed();}
-    public void add(String name,String number,boolean white) {
-        String normalized=Rules.number(number);
-        if(normalized.isEmpty())throw new IllegalArgumentException("Geçerli bir numara yaz: +905xxxxxxxxx");
-        ContentValues v=new ContentValues();v.put("name",name.trim().isEmpty()?normalized:name.trim());v.put("number",normalized);v.put("white",white?1:0);
+    public void add(String name,String number,boolean white) {addAll(Collections.singletonList(new Rules.Contact(0,name,number,white)),white);}
+    public void addAll(List<Rules.Contact> contacts,boolean white) {
+        List<ContentValues> rows=new ArrayList<>();
+        for(Rules.Contact contact:contacts){String normalized=Rules.number(contact.number);if(normalized.isEmpty())throw new IllegalArgumentException("Geçerli bir numara yaz: +905xxxxxxxxx");ContentValues value=new ContentValues();value.put("name",contact.name.trim().isEmpty()?normalized:contact.name.trim());value.put("number",normalized);value.put("white",white?1:0);rows.add(value);}
+        if(rows.isEmpty())return;
         SQLiteDatabase db=getWritableDatabase();db.beginTransaction();
-        try {
-            db.delete("contacts","number=? AND white<>?",new String[]{normalized,white?"1":"0"});
-            db.insertWithOnConflict("contacts",null,v,SQLiteDatabase.CONFLICT_REPLACE);
-            db.setTransactionSuccessful();
-        } finally {db.endTransaction();}
-        changed();
+        try{for(ContentValues value:rows){db.delete("contacts","number=? AND white<>?",new String[]{value.getAsString("number"),white?"1":"0"});if(db.insertWithOnConflict("contacts",null,value,SQLiteDatabase.CONFLICT_REPLACE)<0)throw new SQLiteException("Kişi kaydedilemedi");}db.setTransactionSuccessful();}finally{db.endTransaction();}changed();
     }
     public List<Rules.Contact> contacts() {
         List<Rules.Contact> values=new ArrayList<>();

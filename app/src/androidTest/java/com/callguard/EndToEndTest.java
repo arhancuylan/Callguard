@@ -16,6 +16,7 @@ import org.junit.runner.RunWith;
 import java.io.*;
 import java.util.*;
 import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.Espresso.onData;
 import static androidx.test.espresso.action.ViewActions.*;
 import static androidx.test.espresso.assertion.ViewAssertions.*;
 import static androidx.test.espresso.matcher.ViewMatchers.*;
@@ -41,13 +42,17 @@ public class EndToEndTest {
     @Test public void historyShortcutsAddToBothListsAndClear() throws Exception {store.history("Blocked Caller","+905550001111",false,"Reddetme isteği gönderildi");store.history("Allowed Caller","+905550002222",true,"İzin verildi");try(ActivityScenario<MainActivity> ignored=ActivityScenario.launch(MainActivity.class)){nav("Geçmiş");onView(withContentDescription("Blocked Caller arama kaydı")).perform(scrollTo(),click());onView(withText("Beyaz listeye ekle")).perform(click());onView(withText("Ekle")).perform(click());assertTrue(Rules.listed("","+905550001111",store.contacts(),true));onView(withContentDescription("Allowed Caller arama kaydı")).perform(scrollTo(),click());onView(withText("Kara listeye ekle")).perform(click());onView(withText("Ekle")).perform(click());assertTrue(Rules.listed("","+905550002222",store.contacts(),false));onView(withText("Geçmişi temizle")).perform(scrollTo(),click());onView(withText("Temizle")).perform(click());onView(withText("Henüz arama kaydı yok.")).check(matches(isDisplayed()));}}
     @Test public void realContactsProviderCanBeReadAndSelected() throws Exception {
         instrumentation.getUiAutomation().adoptShellPermissionIdentity(Manifest.permission.WRITE_CONTACTS,Manifest.permission.READ_CONTACTS);
-        long rawId=0;
+        long rawId=0,secondRawId=0;
         try {
             ArrayList<ContentProviderOperation> ops=new ArrayList<>();
             ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI).withValue(ContactsContract.RawContacts.ACCOUNT_TYPE,null).withValue(ContactsContract.RawContacts.ACCOUNT_NAME,null).build());
             ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI).withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID,0).withValue(ContactsContract.Data.MIMETYPE,ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME,"Rehber Test").build());
             ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI).withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID,0).withValue(ContactsContract.Data.MIMETYPE,ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.Phone.NUMBER,"+905550003333").build());
-            ContentProviderResult[] results=context.getContentResolver().applyBatch(ContactsContract.AUTHORITY,ops);rawId=ContentUris.parseId(results[0].uri);
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI).withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID,0).withValue(ContactsContract.Data.MIMETYPE,ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.Phone.NUMBER,"+905550004444").withValue(ContactsContract.CommonDataKinds.Phone.TYPE,ContactsContract.CommonDataKinds.Phone.TYPE_WORK).build());
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI).withValue(ContactsContract.RawContacts.ACCOUNT_TYPE,null).withValue(ContactsContract.RawContacts.ACCOUNT_NAME,null).build());
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI).withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID,4).withValue(ContactsContract.Data.MIMETYPE,ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME,"Toplu Test").build());
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI).withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID,4).withValue(ContactsContract.Data.MIMETYPE,ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.Phone.NUMBER,"+905550005555").build());
+            ContentProviderResult[] results=context.getContentResolver().applyBatch(ContactsContract.AUTHORITY,ops);rawId=ContentUris.parseId(results[0].uri);secondRawId=ContentUris.parseId(results[4].uri);
         }finally{instrumentation.getUiAutomation().dropShellPermissionIdentity();}
         shell("pm grant com.callguard.mobile android.permission.READ_CONTACTS");
         try(ActivityScenario<MainActivity> ignored=ActivityScenario.launch(MainActivity.class)){
@@ -55,16 +60,24 @@ public class EndToEndTest {
             nav("Kişiler");onView(withText("＋  Kişi ekle")).perform(scrollTo(),click());onView(withText("Rehberden seç")).perform(click());
             // Async contacts loading is bounded and then the real picker row is clicked.
             long end=System.currentTimeMillis()+8000;while(true){try{onView(withHint("Rehberde ara")).check(matches(isDisplayed()));break;}catch(androidx.test.espresso.NoMatchingViewException e){if(System.currentTimeMillis()>end)throw e;Thread.sleep(100);}}
-            screenshot("06-rehber-beyaz-liste");
-            onView(withText("Rehber Test")).perform(click());assertTrue(Rules.listed("Rehber Test","",store.contacts(),true));
+            onView(withText("Rehber Test")).perform(click());
+            onView(withText("+905550004444")).check(matches(isDisplayed()));
+            onView(withContentDescription("Rehber Test +905550003333 numarasını seç")).perform(click());
+            onData(anything()).inAdapterView(withContentDescription("Telefon rehberi")).atPosition(1).onChildView(withText("Toplu Test")).perform(click());
+            onData(anything()).inAdapterView(withContentDescription("Telefon rehberi")).atPosition(1).onChildView(withContentDescription("Toplu Test +905550005555 numarasını seç")).perform(click());
+            onView(withHint("Rehberde ara")).perform(typeText("Rehber"),closeSoftKeyboard());
+            onView(withText("2 numara seçildi")).check(matches(isDisplayed()));screenshot("06-rehber-beyaz-liste");
+            onView(withContentDescription("Seçilen numaraları ekle")).perform(click());
+            assertTrue(Rules.listed("","+905550003333",store.contacts(),true));assertTrue(Rules.listed("","+905550005555",store.contacts(),true));assertFalse(Rules.listed("","+905550004444",store.contacts(),true));assertEquals(2,store.contacts().size());
             onView(withText("Kara liste")).perform(scrollTo(),click());
             onView(withText("＋  Kişi ekle")).perform(scrollTo(),click());onView(withText("Rehberden seç")).perform(click());
             end=System.currentTimeMillis()+8000;while(true){try{onView(withHint("Rehberde ara")).check(matches(isDisplayed()));break;}catch(androidx.test.espresso.NoMatchingViewException e){if(System.currentTimeMillis()>end)throw e;Thread.sleep(100);}}
-            onView(withHint("Rehberde ara")).perform(typeText("Rehber"),closeSoftKeyboard());screenshot("07-rehber-kara-liste");
-            onView(withText("Rehber Test")).perform(click());assertTrue(Rules.listed("Rehber Test","",store.contacts(),false));assertFalse(Rules.listed("Rehber Test","",store.contacts(),true));
+            onView(withHint("Rehberde ara")).perform(typeText("Rehber"),closeSoftKeyboard());onView(withText("Rehber Test")).perform(click());
+            onView(withContentDescription("Rehber Test +905550003333 numarasını seç")).perform(click());screenshot("07-rehber-kara-liste");
+            onView(withContentDescription("Seçilen numaraları ekle")).perform(click());assertTrue(Rules.listed("","+905550003333",store.contacts(),false));assertFalse(Rules.listed("","+905550003333",store.contacts(),true));assertTrue(Rules.listed("","+905550005555",store.contacts(),true));assertFalse(Rules.listed("","+905550004444",store.contacts(),false));
         } finally {
             instrumentation.getUiAutomation().adoptShellPermissionIdentity(Manifest.permission.WRITE_CONTACTS);
-            context.getContentResolver().delete(ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI,rawId),null,null);instrumentation.getUiAutomation().dropShellPermissionIdentity();
+            context.getContentResolver().delete(ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI,rawId),null,null);context.getContentResolver().delete(ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI,secondRawId),null,null);instrumentation.getUiAutomation().dropShellPermissionIdentity();
         }
     }
     private void screenshot(String name) throws Exception {instrumentation.waitForIdleSync();File dir=new File(context.getExternalFilesDir(null),"screenshots");assertTrue(dir.isDirectory()||dir.mkdirs());try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){instrumentation.getUiAutomation().takeScreenshot().compress(Bitmap.CompressFormat.PNG,100,out);}}

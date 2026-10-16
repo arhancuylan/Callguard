@@ -1,5 +1,7 @@
-CallGuard 1.0.3 · Call Guard by AC
+CallGuard 1.0.4 · Call Guard by AC
 
-Rehberden ekleme ekranı Android rehberine benzer tam ekran görünümle yenilendi: kişiye göre renkli baş harf avatarları, alfabetik bölüm başlıkları, ad/numara araması, aramayı temizleme, kişi sayısı ve zaten listede olan kişiler için işaret. Beyaz ve kara liste hedefi ayrı renklerle belirtilir. Seçilen kişinin numarası önceki gibi yalnızca cihazda saklanır. Kişiler sekmesindeki avatarlar da aynı renk paletini kullanır.
+Modern rehber ekranında kişiler rehber kimliğine göre gruplanır. Kişiye dokununca cep, ev, iş gibi kayıtlı numaraları açılır. Seçilen numaralar işaretlenir; farklı kişilerden çoklu seçim ve toplu ekleme yapılır. Arama yaparken seçimler korunur. Zaten hedef listede olan numaralar işaretli gösterilir. Ekleme tek veritabanı işlemiyle yapılır; iptal edilirse liste değişmez.
 
-Mevcut uygulamanın üzerine kurulur; listeler, geçmiş ve ayarlar korunur. Çağrı engelleme yöntemi değişmedi. Birim testleri, Android lint, derleme ve önceki sürümle imza karşılaştırması CI üzerinde yapılır.
+WhatsApp yalnızca görünen adı bildirirse aynı kişinin farklı numaraları ayırt edilemeyebilir; numaraya göre kesin ayrım için çağrı bildiriminde numara bulunmalıdır.
+
+Mevcut sürümün üzerine kurulur; listeler, geçmiş ve ayarlar korunur. Çağrı reddetme yöntemi değişmedi.
