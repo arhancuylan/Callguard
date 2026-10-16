@@ -7,6 +7,9 @@
         <activity android:name=".ProbeActivity" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity>
+        <service android:name=".CallNotificationService" android:exported="true" android:label="CallGuard çağrı bildirimi kontrolü" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>
+        </service>
         <service android:name=".TelecomProbeService" android:exported="true" android:permission="android.permission.BIND_INCALL_SERVICE">
             <intent-filter><action android:name="android.telecom.InCallService"/></intent-filter>
             <meta-data android:name="android.telecom.INCLUDE_SELF_MANAGED_CALLS" android:value="true"/>

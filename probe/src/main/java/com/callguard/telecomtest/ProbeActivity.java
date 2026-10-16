@@ -26,8 +26,14 @@ public final class ProbeActivity extends Activity {
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff4f7f5);
         scroll.setOnApplyWindowInsetsListener((v,i)->{v.setPadding(i.getSystemWindowInsetLeft(),i.getSystemWindowInsetTop(),i.getSystemWindowInsetRight(),i.getSystemWindowInsetBottom());return i;});
         body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(22),dp(16),dp(22),dp(24));scroll.addView(body);setContentView(scroll);
-        body.addView(label("CallGuard · Telecom Test 0.2.4",25));
-        body.addView(label("DENEYSEL · WhatsApp aramaları için cihaz testi\nBu uygulama eski CallGuard'dan ayrı kurulur. Erişilebilirlik veya bildirim okuma izni kullanmaz. İlk mod yalnızca gözlemdir.",15));
+        body.addView(label("CallGuard · Bildirim Test 0.2.5",25));
+        body.addView(label("DENEYSEL · WhatsApp aramaları için cihaz testi\nBu uygulama eski CallGuard'dan ayrı kurulur. Yeni bildirim yöntemi, WhatsApp çağrı bildirimindeki reddet eylemini çalıştırmayı dener. Bildirim erişimi gerekir; saat gerekmez. Yeni sürüm ilk açılışta yalnızca gözlem moduna geçer.",15));
+        if(!ProbeState.prefs(this).getBoolean("notification_migration",false)){
+            ProbeState.prefs(this).edit().putString("command","notification").putBoolean("armed",false).putBoolean("notification_migration",true).apply();
+        }
+        boolean notificationAccess=getSystemService(android.app.NotificationManager.class).isNotificationListenerAccessGranted(new ComponentName(this,CallNotificationService.class));
+        body.addView(label("Bildirim erişimi: "+(notificationAccess?"verildi":"verilmedi"),18));
+        button("Bildirim erişimini aç / kontrol et",this::notificationDisclosure);
         CompanionDeviceManager manager=getSystemService(CompanionDeviceManager.class);
         int count=manager==null?0:manager.getMyAssociations().size();
         boolean access=ProbeAccess.canManageCalls(this);
@@ -37,10 +43,12 @@ public final class ProbeActivity extends Activity {
         RadioGroup commands=new RadioGroup(this);
         RadioButton rejectCommand=new RadioButton(this);rejectCommand.setId(View.generateViewId());rejectCommand.setText("Reject · önceki yöntem");
         RadioButton disconnectCommand=new RadioButton(this);disconnectCommand.setId(View.generateViewId());disconnectCommand.setText("Disconnect · alternatif deneme");
-        commands.addView(rejectCommand);commands.addView(disconnectCommand);
-        commands.check(ProbeState.prefs(this).getString("command","reject").equals("disconnect")?disconnectCommand.getId():rejectCommand.getId());
+        RadioButton notificationCommand=new RadioButton(this);notificationCommand.setId(View.generateViewId());notificationCommand.setText("WhatsApp bildirimindeki Reddet · yeni yöntem");
+        commands.addView(notificationCommand);commands.addView(rejectCommand);commands.addView(disconnectCommand);
+        String selectedCommand=ProbeState.prefs(this).getString("command","notification");
+        commands.check(selectedCommand.equals("notification")?notificationCommand.getId():selectedCommand.equals("disconnect")?disconnectCommand.getId():rejectCommand.getId());
         commands.setOnCheckedChangeListener((g,id)->{
-            String command=id==disconnectCommand.getId()?"disconnect":"reject";
+            String command=id==notificationCommand.getId()?"notification":id==disconnectCommand.getId()?"disconnect":"reject";
             ProbeState.prefs(this).edit().putString("command",command).putBoolean("armed",false).apply();
             ProbeState.log(this,"Komut seçildi: "+command+" · otomatik işlem kapatıldı; yeniden açmak gerekir");
             render();
@@ -49,7 +57,7 @@ public final class ProbeActivity extends Activity {
         body.addView(label("Disconnect, yalnızca hâlâ çalan ve izin listesi dışında kalan gelen WhatsApp sesli çağrısında denenir. Çağrı yanıtlanmaz. Etkinliği doğrulanmadı. Yöntem değişince otomatik işlem kapanır.",14));
         Switch armed=new Switch(this);armed.setText("2 · Otomatik reddetmeyi aç");armed.setPadding(0,dp(16),0,dp(16));armed.setChecked(ProbeState.prefs(this).getBoolean("armed",false));
         armed.setOnCheckedChangeListener((v,on)->{
-            if(on){armed.setChecked(false);new AlertDialog.Builder(this).setTitle("Reddetme denemesini aç?").setMessage("Açıkken izin listesi dışındaki algılanan gelen WhatsApp sesli aramalarına seçtiğin reject/disconnect komutu gönderilir. Boş izin listesi tüm algılanan gelen sesli aramaları hedefler. Önce gözlem modunda çağrı olayının geldiğini doğrula. SIM aramalarına işlem yapılmaz.").setNegativeButton("Vazgeç",null).setPositiveButton("Denemeyi aç",(d,w)->{ProbeState.prefs(this).edit().putBoolean("armed",true).apply();ProbeState.log(this,"Otomatik reddetme kullanıcı tarafından açıldı");render();}).show();}
+            if(on){armed.setChecked(false);new AlertDialog.Builder(this).setTitle("Reddetme denemesini aç?").setMessage("Açıkken izin listesi dışındaki algılanan gelen WhatsApp sesli aramalarına seçtiğin yöntem uygulanır. Bildirim yöntemi, WhatsApp bildiriminin Reddet eylemini çalıştırır; bunun için saat veya Telecom izni gerekmez. Boş izin listesi tüm algılanan gelen sesli aramaları hedefler. Önce gözlem modunda çağrı olayının geldiğini doğrula. SIM aramalarına işlem yapılmaz.").setNegativeButton("Vazgeç",null).setPositiveButton("Denemeyi aç",(d,w)->{ProbeState.prefs(this).edit().putBoolean("armed",true).apply();ProbeState.log(this,"Otomatik reddetme kullanıcı tarafından açıldı");render();}).show();}
             else{ProbeState.prefs(this).edit().putBoolean("armed",false).apply();}
         });body.addView(armed);
         body.addView(label("İzin listesi · tam uluslararası numara",18));
@@ -68,9 +76,19 @@ public final class ProbeActivity extends Activity {
         body.addView(label("Önce test başlangıcını işaretle, sonra başka telefondan ara. Her WhatsApp çağrısına ayrı kimlik verilir. API dönüşü veya kapanma tek başına başarı değildir. Kapanma gecikirse arayan kişi kapattıktan sonra ilgili işarete bas. Tam numara ve Bluetooth adresi kayda yazılmaz.",14));
         logs=label(ProbeState.logs(this),14);logs.setTextIsSelectable(true);body.addView(logs);
         button("Kayıtları kopyala",()->{android.content.ClipboardManager cm=getSystemService(android.content.ClipboardManager.class);cm.setPrimaryClip(ClipData.newPlainText("CallGuard Telecom",ProbeState.logs(this)));Toast.makeText(this,"Kayıtlar kopyalandı",Toast.LENGTH_SHORT).show();});
+        body.addView(label("Bildirim yönteminde yukarıdaki saat ilişkisi ve Telecom izni gerekmez. İzin listesi doluyken bildirim arayanı yalnızca adla gösteriyorsa, bu deneme eşleşmeyi doğrulayamadığı için çağrıya dokunmaz.",14));
         button("Bu uygulamanın saat ilişkisini kaldır",()->new AlertDialog.Builder(this).setMessage("Yalnızca CallGuard Telecom Test ilişkileri kaldırılacak ve otomatik reddetme kapanacak.").setNegativeButton("Vazgeç",null).setPositiveButton("Kaldır",(d,w)->{
             ProbeState.prefs(this).edit().putBoolean("armed",false).apply();if(manager!=null)for(AssociationInfo a:manager.getMyAssociations())manager.disassociate(a.getId());render();}).show());
         body.addView(label("Sonuç henüz doğrulanmadı. Bildirimler kapalıyken, ekran kilitliyken ve saat bağlantısı kesilince ayrı test gerekir. Sesli/görüntülü ayrımı Telecom bilgisinin doğruluğuna bağlıdır. Eski CallGuard erişilebilirlik servisini bu test sırasında kapat.",14));
+    }
+    private void notificationDisclosure(){
+        new AlertDialog.Builder(this).setTitle("Bildirim erişimi")
+            .setMessage("Android bu erişimle uygulamaların bildirimlerini okuma ve bildirim eylemlerini çalıştırma yetkisi verir. CallGuard yalnızca WhatsApp/WhatsApp Business çağrı bildirimlerini işler; mesaj içeriklerini ve kişi başlıklarını kaydetmez. Reddet eylemi doğrulanırsa ve otomatik işlem açıksa bu eylemi çalıştırır. Veriler cihazda kalır. Erişimi Android ayarlarından istediğin zaman kapatabilirsin.")
+            .setNegativeButton("Vazgeç",null).setPositiveButton("Android ayarlarını aç",(d,w)->{
+                Intent intent=new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS);
+                intent.putExtra(android.provider.Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,new ComponentName(this,CallNotificationService.class).flattenToString());
+                try{startActivity(intent);}catch(ActivityNotFoundException e){startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));}
+            }).show();
     }
     private void pairWithPermission(){if(checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},20);return;}chooseBondedWatch();}
     @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==20&&grants.length>0&&grants[0]==PackageManager.PERMISSION_GRANTED)chooseBondedWatch();}

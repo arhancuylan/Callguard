@@ -82,6 +82,7 @@ public final class TelecomProbeService extends InCallService {
             }
             return;
         }
+        if("notification".equals(ProbeState.prefs(this).getString("command","reject"))){once(t,"Bildirim yöntemi seçili · Telecom komutu gönderilmedi");return;}
         String phone=d.getHandle()!=null&&"tel".equals(d.getHandle().getScheme())?d.getHandle().getSchemeSpecificPart():"";
         boolean incoming=d.getCallDirection()==Call.Details.DIRECTION_INCOMING;
         boolean video=VideoProfile.isVideo(d.getVideoState());
