@@ -7,7 +7,7 @@ permissions:
   contents: write
 concurrency:
   group: callguard-final
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build-test-publish:
     runs-on: ubuntu-latest
