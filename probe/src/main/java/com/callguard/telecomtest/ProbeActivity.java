@@ -26,7 +26,7 @@ public final class ProbeActivity extends Activity {
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff4f7f5);
         scroll.setOnApplyWindowInsetsListener((v,i)->{v.setPadding(i.getSystemWindowInsetLeft(),i.getSystemWindowInsetTop(),i.getSystemWindowInsetRight(),i.getSystemWindowInsetBottom());return i;});
         body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(22),dp(16),dp(22),dp(24));scroll.addView(body);setContentView(scroll);
-        body.addView(label("CallGuard · Telecom Test 0.2.2",25));
+        body.addView(label("CallGuard · Telecom Test 0.2.3",25));
         body.addView(label("DENEYSEL · WhatsApp aramaları için cihaz testi\nBu uygulama eski CallGuard'dan ayrı kurulur. Erişilebilirlik veya bildirim okuma izni kullanmaz. İlk mod yalnızca gözlemdir.",15));
         CompanionDeviceManager manager=getSystemService(CompanionDeviceManager.class);
         int count=manager==null?0:manager.getMyAssociations().size();
@@ -48,7 +48,10 @@ public final class ProbeActivity extends Activity {
         });
         button("Durumu yenile",this::render);
         body.addView(label("3 · Tanılama olayları",20));
-        body.addView(label("Gözlem modunda başka telefondan ara. 'Gelen WhatsApp sesli çağrısı Telecom’dan alındı' kaydı çıkmalı. Olay yoksa reddetmeyi açmak işe yaramaz. Çağrı kapandı kaydı tek başına başarı değildir; arayan telefonla da kontrol edilmeli.",14));
+        button("Test başlangıcı: saat bağlı",()->ProbeState.log(this,"KULLANICI İŞARETİ: saat bağlı test BAŞLADI"));
+        button("Test başlangıcı: saat bağlantısı kesik",()->ProbeState.log(this,"KULLANICI İŞARETİ: saat bağlantısı kesik test BAŞLADI"));
+        button("Arayan kişi kapattı: işaretle",()->ProbeState.log(this,"KULLANICI İŞARETİ: arayan kişi çağrıyı sonlandırdı"));
+        body.addView(label("Önce test başlangıcını işaretle, sonra başka telefondan ara. Her WhatsApp çağrısına ayrı kimlik verilir. API dönüşü veya kapanma tek başına başarı değildir. Kapanma gecikirse arayan kişi kapattıktan sonra ilgili işarete bas. Tam numara ve Bluetooth adresi kayda yazılmaz.",14));
         logs=label(ProbeState.logs(this),14);logs.setTextIsSelectable(true);body.addView(logs);
         button("Kayıtları kopyala",()->{android.content.ClipboardManager cm=getSystemService(android.content.ClipboardManager.class);cm.setPrimaryClip(ClipData.newPlainText("CallGuard Telecom",ProbeState.logs(this)));Toast.makeText(this,"Kayıtlar kopyalandı",Toast.LENGTH_SHORT).show();});
         button("Bu uygulamanın saat ilişkisini kaldır",()->new AlertDialog.Builder(this).setMessage("Yalnızca CallGuard Telecom Test ilişkileri kaldırılacak ve otomatik reddetme kapanacak.").setNegativeButton("Vazgeç",null).setPositiveButton("Kaldır",(d,w)->{

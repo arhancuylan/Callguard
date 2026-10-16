@@ -12,8 +12,8 @@ final class ProbeState {
             try{
                 JSONArray old=new JSONArray(p.getString("log","[]"));
                 JSONArray next=new JSONArray();
-                next.put(new SimpleDateFormat("HH:mm:ss",new Locale("tr","TR")).format(new Date())+" · "+message);
-                for(int i=0;i<old.length()&&i<99;i++)next.put(old.getString(i));
+                next.put(new SimpleDateFormat("HH:mm:ss.SSS",new Locale("tr","TR")).format(new Date())+" · "+message);
+                for(int i=0;i<old.length()&&i<299;i++)next.put(old.getString(i));
                 p.edit().putString("log",next.toString()).apply();
             }catch(JSONException e){p.edit().putString("log","[]").apply();}
         }
