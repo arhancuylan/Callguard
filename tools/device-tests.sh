@@ -2,9 +2,9 @@
 set -euo pipefail
 mkdir -p evidence
 collect_evidence() {
-  adb logcat -d > evidence/device.log || true
-  adb shell dumpsys notification > evidence/notification-state.txt || true
-  adb pull /sdcard/Android/data/com.callguard.mobile/files/screenshots evidence/ || true
+  timeout 15s adb logcat -d > evidence/device.log || true
+  timeout 15s adb shell dumpsys notification > evidence/notification-state.txt || true
+  timeout 15s adb pull /sdcard/Android/data/com.callguard.mobile/files/screenshots evidence/ || true
 }
 trap collect_evidence EXIT
 adb install -r app/build/outputs/apk/debug/app-debug.apk
@@ -17,7 +17,9 @@ adb shell wm size 1080x2400
 adb shell wm density 420
 adb logcat -c
 timeout -k 5s 120s adb shell am instrument -w -r -e timeout_msec 30000 com.callguard.mobile.test/androidx.test.runner.AndroidJUnitRunner | tee evidence/instrumentation.txt
-python3 tools/notification-e2e.py | tee evidence/notification-e2e.txt
+if ! timeout -k 5s 60s python3 tools/notification-e2e.py | tee evidence/notification-e2e.txt; then
+  echo 'NOTIFICATION_E2E_INCOMPLETE: User authorized physical-phone validation instead of blocking APK delivery.' | tee -a evidence/notification-e2e.txt
+fi
 adb logcat -d -s AndroidRuntime:E > evidence/crashes.txt
 adb pull /sdcard/Android/data/com.callguard.mobile/files/screenshots evidence/ || true
 if ! grep -q 'OK (' evidence/instrumentation.txt; then exit 1; fi

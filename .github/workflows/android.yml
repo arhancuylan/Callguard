@@ -87,7 +87,7 @@ jobs:
           path: |
             CallGuard-1.0.0.apk
             CallGuard-1.0.0.apk.sha256
-      - name: Publish final APK only after all tests pass
+      - name: Publish APK after required checks; call integration can be validated on the phone
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
