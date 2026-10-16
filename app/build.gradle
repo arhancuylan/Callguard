@@ -1,4 +1,9 @@
 plugins { id 'com.android.application' }
+def configured = { String key -> (project.findProperty(key) ?: System.getenv(key) ?: '').toString() }
+def quoted = { String value -> '"' + value.replace('\\','\\\\').replace('"','\\"') + '"' }
+def apiBase = configured('CALLGUARD_API_BASE')
+def googleClientId = configured('CALLGUARD_GOOGLE_CLIENT_ID')
+if (configured('CALLGUARD_COMMERCIAL') == 'true' && !apiBase.startsWith('https://')) throw new GradleException('Commercial builds require a configured HTTPS API')
 android {
     namespace 'com.callguard'
     compileSdk 35
@@ -7,8 +12,12 @@ android {
         applicationId 'com.callguard.mobile'
         minSdk 26
         targetSdk 35
-        versionCode 104
-        versionName '1.0.4'
+        versionCode 110
+        versionName '1.1.0-preview'
+        buildConfigField 'String', 'API_BASE', quoted(apiBase)
+        buildConfigField 'String', 'GOOGLE_CLIENT_ID', quoted(googleClientId)
+        buildConfigField 'boolean', 'COMMERCIAL_ENABLED', (configured('CALLGUARD_COMMERCIAL') == 'true').toString()
+        buildConfigField 'String', 'PRO_PRODUCT_ID', '"callguard_pro_lifetime"'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     signingConfigs {
@@ -24,6 +33,11 @@ android {
     testOptions { animationsDisabled true }
 }
 dependencies {
+    implementation 'com.android.billingclient:billing:8.1.0'
+    implementation 'androidx.credentials:credentials:1.3.0'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+    implementation 'androidx.work:work-runtime:2.10.1'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test:runner:1.6.2'
     androidTestImplementation 'androidx.test:rules:1.6.1'

@@ -19,7 +19,8 @@ public final class CallNotificationService extends NotificationListenerService {
     @Override public void onNotificationPosted(StatusBarNotification sbn){
         if(sbn==null)return;
         trace("posted owner="+sbn.getPackageName()+" enabled="+store.enabled());
-        if(!store.enabled())return;
+        if(store.enabled()&&BuildConfig.COMMERCIAL_ENABLED&&!LicenseManager.allowed(this)){store.setting("enabled",false);CloudWorker.notifyUser(this,"Deneme sona erdi","Otomatik koruma durduruldu. Listelerin korunuyor.",2);return;}
+        if(!store.enabled()||!store.scheduleActive())return;
         String owner=sbn.getPackageName();
         if(!"com.whatsapp".equals(owner)&&!"com.whatsapp.w4b".equals(owner))return;
         Notification n=sbn.getNotification();
@@ -34,8 +35,8 @@ public final class CallNotificationService extends NotificationListenerService {
         if(incoming==null)return;
         String caller=String.valueOf(e.getCharSequence(Notification.EXTRA_TITLE,""));String uri="";
         if(Build.VERSION.SDK_INT>=28){Person person=e.getParcelable("android.callPerson");if(person!=null){uri=person.getUri();if(person.getName()!=null)caller=person.getName().toString();}}
-        Rules.Mode mode=store.mode();
-        Rules.Media media=store.media();
+        Rules.Mode mode=store.effectiveMode();
+        Rules.Media media=store.effectiveMedia();
         boolean recordOnly=store.recordOnly();
         // ALL never depends on a contact lookup or either list.
         boolean listed=mode!=Rules.Mode.ALL&&Rules.listed(caller,uri,store.contacts(),mode==Rules.Mode.WHITELIST);

@@ -1,0 +1,42 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://callguard:${POSTGRES_PASSWORD}@db:5432/callguard
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/play-publisher.json
+      TRUST_PROXY: 'true'
+    volumes:
+      - ./secrets/play-publisher.json:/run/secrets/play-publisher.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    expose: ['8080']
+    mem_limit: 512m
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: callguard
+      POSTGRES_DB: callguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: ['database:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U callguard']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ['80:80', '443:443']
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - certificates:/data
+    depends_on: ['api']
+volumes:
+  database:
+  certificates:

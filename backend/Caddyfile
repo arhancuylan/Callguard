@@ -1,0 +1,6 @@
+{$DOMAIN} {
+    reverse_proxy api:8080 {
+        header_up X-CallGuard-Client-IP {remote_host}
+    }
+    header Strict-Transport-Security "max-age=31536000"
+}

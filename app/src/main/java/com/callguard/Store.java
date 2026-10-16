@@ -16,9 +16,26 @@ public final class Store extends SQLiteOpenHelper {
     public SharedPreferences prefs() { return context.getSharedPreferences("callguard-final",Context.MODE_PRIVATE); }
     public Rules.Mode mode() { try { return Rules.Mode.valueOf(prefs().getString("rule","WHITELIST")); } catch (IllegalArgumentException e) {return Rules.Mode.WHITELIST;} }
     public Rules.Media media() { try {return Rules.Media.valueOf(prefs().getString("media","BOTH"));}catch(IllegalArgumentException e){return Rules.Media.BOTH;} }
+    public String profile(){return prefs().getString("profile","custom");}
+    private String profileKey(String key){return "profile_"+profile()+"_"+key;}
+    public boolean scheduled(){return prefs().getBoolean(profileKey("scheduled"),false);}
+    public int scheduleDays(){return prefs().getInt(profileKey("days"),127);}
+    public int scheduleStart(){return prefs().getInt(profileKey("start"),540);}
+    public int scheduleEnd(){return prefs().getInt(profileKey("end"),1080);}
+    public boolean scheduleActive(){return ProtectionSchedule.active(scheduled(),scheduleDays(),scheduleStart(),scheduleEnd(),java.time.ZonedDateTime.now());}
+    public Rules.Mode effectiveMode(){try{return Rules.Mode.valueOf(prefs().getString(profileKey("rule"),mode().name()));}catch(IllegalArgumentException e){return mode();}}
+    public Rules.Media effectiveMedia(){try{return Rules.Media.valueOf(prefs().getString(profileKey("media"),media().name()));}catch(IllegalArgumentException e){return media();}}
+    public void selectProfile(String profile){
+        if(!Arrays.asList("custom","work","sleep","meeting").contains(profile))throw new IllegalArgumentException("Profil bulunamadı");
+        android.content.SharedPreferences.Editor edit=prefs().edit();String prefix="profile_"+profile+"_";
+        if(!prefs().contains(prefix+"initialized")){edit.putBoolean(prefix+"initialized",true).putString(prefix+"rule",mode().name()).putString(prefix+"media",media().name()).putBoolean(prefix+"scheduled",!profile.equals("custom"));edit.putInt(prefix+"days",profile.equals("work")?31:127).putInt(prefix+"start",profile.equals("sleep")?1320:profile.equals("meeting")?600:540).putInt(prefix+"end",profile.equals("sleep")?420:profile.equals("meeting")?660:1080);}
+        edit.putString("profile",profile).apply();changed();
+    }
+    public void profileSetting(String key,int value){if(!Arrays.asList("days","start","end").contains(key))throw new IllegalArgumentException("Geçersiz ayar");prefs().edit().putInt(profileKey(key),value).apply();changed();}
+    public void scheduleEnabled(boolean value){prefs().edit().putBoolean(profileKey("scheduled"),value).apply();changed();}
     public boolean enabled() {return prefs().getBoolean("enabled",false);}
     public boolean recordOnly() {return prefs().getBoolean("recordOnly",false);}
-    public void setting(String key,String value) {prefs().edit().putString(key,value).apply(); changed();}
+    public void setting(String key,String value) {android.content.SharedPreferences.Editor edit=prefs().edit().putString(key,value);if(key.equals("rule")||key.equals("media"))edit.putString(profileKey(key),value);edit.apply(); changed();}
     public void setting(String key,boolean value) {prefs().edit().putBoolean(key,value).apply(); changed();}
     public void add(String name,String number,boolean white) {addAll(Collections.singletonList(new Rules.Contact(0,name,number,white)),white);}
     public void addAll(List<Rules.Contact> contacts,boolean white) {
@@ -47,5 +64,5 @@ public final class Store extends SQLiteOpenHelper {
         try(Cursor c=getReadableDatabase().rawQuery("SELECT count(*) FROM history WHERE at>=? AND result=?",new String[]{String.valueOf(cal.getTimeInMillis()),"Reddetme isteği gönderildi"})){c.moveToFirst();return c.getInt(0);}
     }
     public void clearHistory(){getWritableDatabase().delete("history",null,null);changed();}
-    private void changed(){context.sendBroadcast(new Intent(context.getPackageName()+".CHANGED").setPackage(context.getPackageName()));}
+    private void changed(){CloudSync.dirty(context);context.sendBroadcast(new Intent(context.getPackageName()+".CHANGED").setPackage(context.getPackageName()));}
 }

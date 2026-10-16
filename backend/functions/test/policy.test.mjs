@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {entitlement,TRIAL_MS,validateBackup,requireRevision} from '../policy.mjs';
+test('trial dates come from immutable account start',()=>{assert.equal(entitlement(100,false,200).trialEnds,100+TRIAL_MS);assert.equal(entitlement(null,false,200).trialEnds,0);assert.equal(entitlement(100,true,200).pro,true);});
+test('backup cannot grant a license or enable protection',()=>{const b=validateBackup({version:1,contacts:[],settings:{pro:true,trialEnds:999,enabled:true,rule:'ALL',profile_sleep_start:1320}});assert.deepEqual(b.settings,{rule:'ALL',profile_sleep_start:1320});});
+test('invalid backups cannot reach storage',()=>{assert.throws(()=>validateBackup({version:1,contacts:[{name:'Someone',number:'private',white:true}]}));assert.throws(()=>validateBackup({version:1,contacts:[],settings:{profile_work_start:2000}}));});
+test('stale clients do not overwrite another device backup',()=>{requireRevision(3,3);assert.throws(()=>requireRevision(0,3),e=>e.status===409);});

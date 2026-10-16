@@ -51,10 +51,21 @@ jobs:
         with:
           path: .ci-signing/callguard-final.keystore
           key: callguard-final-signing-v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fast backend policy checks
+        run: |
+          node --check backend/functions/server.mjs
+          node --test backend/functions/test/*.test.mjs
       - name: Unit tests, lint and APK builds
+        env:
+          CALLGUARD_API_BASE: ${{ vars.CALLGUARD_API_BASE }}
+          CALLGUARD_GOOGLE_CLIENT_ID: ${{ vars.CALLGUARD_GOOGLE_CLIENT_ID }}
+          CALLGUARD_COMMERCIAL: ${{ vars.CALLGUARD_COMMERCIAL }}
         id: build
         run: |
-          gradle --no-daemon :app:testDebugUnitTest :app:lintRelease :app:assembleRelease || { cat app/build/intermediates/lint_intermediate_text_report/*/*/*.txt 2>/dev/null; exit 1; }
+          gradle --no-daemon :app:testDebugUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease || { cat app/build/intermediates/lint_intermediate_text_report/*/*/*.txt 2>/dev/null; exit 1; }
           if [ "${{ github.event_name }}" = workflow_dispatch ] && [ "${{ inputs.run_device_tests }}" = true ]; then gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :fixture:assembleDebug; fi
       - name: Enable KVM for the emulator
         if: github.event_name == 'workflow_dispatch' && inputs.run_device_tests
@@ -102,25 +113,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         if: always() && steps.build.conclusion == 'success'
         run: |
-          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.0.4.apk
-          sha256sum CallGuard-1.0.4.apk > CallGuard-1.0.4.apk.sha256
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.0.4.apk
+          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.1.0-preview.apk
+          cp app/build/outputs/bundle/release/app-release.aab CallGuard-1.1.0-preview.aab
+          sha256sum CallGuard-1.1.0-preview.apk > CallGuard-1.1.0-preview.apk.sha256
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.1.0-preview.apk
           gh release download v1.0.0 --pattern CallGuard-1.0.0.apk --dir previous
           signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           previous_cert=$("$signer" verify --print-certs previous/CallGuard-1.0.0.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
-          current_cert=$("$signer" verify --print-certs CallGuard-1.0.4.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
+          current_cert=$("$signer" verify --print-certs CallGuard-1.1.0-preview.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
           test -n "$previous_cert"
           test "$previous_cert" = "$current_cert"
           echo 'Update signing certificate matches version 1.0.0.' 
       - uses: actions/upload-artifact@v4
         if: always() && steps.build.conclusion == 'success'
         with:
-          name: CallGuard-1.0.4
+          name: CallGuard-1.1.0-preview
           path: |
-            CallGuard-1.0.4.apk
-            CallGuard-1.0.4.apk.sha256
+            CallGuard-1.1.0-preview.apk
+            CallGuard-1.1.0-preview.apk.sha256
+            CallGuard-1.1.0-preview.aab
       - name: Publish APK after required checks; call integration can be validated on the phone
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v1.0.4" CallGuard-1.0.4.apk CallGuard-1.0.4.apk.sha256 --title "CallGuard 1.0.4 · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --latest
+          gh release create "v1.1.0-preview" CallGuard-1.1.0-preview.apk CallGuard-1.1.0-preview.apk.sha256 CallGuard-1.1.0-preview.aab --title "CallGuard 1.1.0-preview · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --prerelease --latest=false

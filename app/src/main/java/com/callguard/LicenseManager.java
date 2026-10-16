@@ -1,0 +1,9 @@
+package com.callguard;
+import android.content.*;import android.os.SystemClock;import org.json.JSONObject;
+final class LicenseManager {
+    static void cache(Context context,JSONObject data){long now=data.optLong("serverTime");if(now<=0)return;context.getSharedPreferences("license",0).edit().putString("user",SessionVault.userId(context)).putBoolean("pro",data.optBoolean("pro")).putLong("trialEnds",data.optLong("trialEnds")).putLong("serverTime",now).putLong("elapsed",SystemClock.elapsedRealtime()).putLong("highest",now).apply();context.sendBroadcast(new Intent(context.getPackageName()+".CHANGED").setPackage(context.getPackageName()));}
+    static void clear(Context context){context.getSharedPreferences("license",0).edit().clear().apply();}
+    static long now(Context context){SharedPreferences p=context.getSharedPreferences("license",0);long now=Entitlement.estimatedNow(p.getLong("serverTime",0),p.getLong("elapsed",0),SystemClock.elapsedRealtime(),System.currentTimeMillis(),p.getLong("highest",0));p.edit().putLong("highest",now).apply();return now;}
+    static boolean allowed(Context context){if(!BuildConfig.COMMERCIAL_ENABLED)return true;SharedPreferences p=context.getSharedPreferences("license",0);if(SessionVault.userId(context).isEmpty()||!SessionVault.userId(context).equals(p.getString("user","")))return false;return Entitlement.access(p.getBoolean("pro",false),p.getLong("trialEnds",0),now(context));}
+    static String status(Context context){if(!BuildConfig.COMMERCIAL_ENABLED)return "Önizleme sürümü · tüm özellikler açık";SharedPreferences p=context.getSharedPreferences("license",0);if(p.getBoolean("pro",false)&&allowed(context))return "Pro · kalıcı lisans etkin";long ends=p.getLong("trialEnds",0);if(ends==0)return "7 gün ücretsiz dene · tek ödeme, abonelik yok";long days=Entitlement.daysLeft(ends,now(context));return days>0?"Ücretsiz deneme · "+days+" gün kaldı":"Deneme sona erdi · otomatik koruma durduruldu";}
+}

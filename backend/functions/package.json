@@ -1,0 +1,1 @@
+{"name":"callguard-server","version":"1.1.0","private":true,"type":"module","engines":{"node":">=22"},"scripts":{"start":"node server.mjs","test":"node --test test/*.test.mjs"},"dependencies":{"google-auth-library":"9.15.1","nodemailer":"7.0.3","pg":"8.16.3"}}
