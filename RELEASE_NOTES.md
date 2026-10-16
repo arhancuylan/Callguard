@@ -1,9 +1,11 @@
-CallGuard 1.1.0 önizleme · Call Guard by AC
+CallGuard 1.1.1 önizleme · Call Guard by AC
 
-Önceki rehber, çoklu numara/kişi seçimi, liste/geçmiş, ses/video ve ikon düzenlemeleri korunur. İş, uyku, toplantı ve kişisel profiller; haftalık gün/saat zamanlaması; geceyi aşan aralıklar eklendi.
+Rehber araması ve klavye düzeni düzeltildi:
+- Ad ve numara arama alanları bir kez hazırlanır; filtreleme arka planda, kısa yazma gecikmesiyle yapılır. Eski arama sonucu yeni sorgunun üzerine yazamaz.
+- Kişi satırları yeniden kullanılır. Her tuşta görünüm ağacı baştan oluşturulmaz.
+- Klavye açıkken açıklama alanı ve seçim sayısı küçülür; kaydırılabilir kişi listesine yer bırakılır. Açıklamalar listeyle kaydırılır; ekle düğmesi görünür kalır.
+- Klavyenin Ara tuşuyla klavye kapatılabilir; çoklu seçim aramada korunur.
 
-Bu bir ticari satış sürümü değildir: API/OAuth/Play Console yapılandırması henüz bağlanmadığından bu derlemede bütün özellikler ücretsiz açık kalır, süre nedeniyle koruma durmaz ve ödeme alınmaz. Sunucu kurulumu bitmeden hesap/bulut düğmeleri çalışıyormuş gibi gösterilmez.
+Önceki profil, zamanlama, numara/kişi seçimi, liste ve geçmiş işlevleri korunur. Hesap/bulut/ödeme sunucusu henüz canlı değildir; önizleme ücret almaz ve kullanımı süreyle durdurmaz.
 
-Kaynak kodda kendi sunucumuz için Google ve e-posta girişi, doğrulama/şifre yenileme, şifreli bulut yedekleme, geri yükleme, hesap silme; hesap başına 7 gün deneme ve sunucuda doğrulanan tek seferlik Google Play Pro satın alma/geri yükleme akışları hazırlandı. Bunların gerçek servis uçtan uca testleri henüz yapılmadı. Kurulum paketi backend/README.md içindedir. Önerilen callguard.mktech.net.tr adresi henüz kurulmuş değildir.
-
-Hızlı birim/mantık testleri, lint, APK/AAB derleme ve önceki sürümle APK imza karşılaştırması uygulanır. Kullanıcı isteğiyle uzun emülatör/gerçek çağrı testleri çalıştırılmaz. Listeler ve geçmiş güncellemede korunur.
+Kullanıcı isteğiyle uzun emülatör testleri çalıştırılmaz. Hızlı mantık testleri, lint, APK/AAB derleme ve imza eşleşmesi kontrolleri uygulanır; Samsung üzerinde klavye ve kaydırma kontrolü kullanıcı tarafından yapılacaktır.

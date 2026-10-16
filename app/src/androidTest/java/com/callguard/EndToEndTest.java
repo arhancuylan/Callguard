@@ -63,8 +63,8 @@ public class EndToEndTest {
             onView(withText("Rehber Test")).perform(click());
             onView(withText("+905550004444")).check(matches(isDisplayed()));
             onView(withContentDescription("Rehber Test +905550003333 numarasını seç")).perform(click());
-            onData(anything()).inAdapterView(withContentDescription("Telefon rehberi")).atPosition(1).onChildView(withText("Toplu Test")).perform(click());
-            onData(anything()).inAdapterView(withContentDescription("Telefon rehberi")).atPosition(1).onChildView(withContentDescription("Toplu Test +905550005555 numarasını seç")).perform(click());
+            onData(anything()).inAdapterView(withContentDescription("Telefon rehberi")).atPosition(2).onChildView(withText("Toplu Test")).perform(click());
+            onData(anything()).inAdapterView(withContentDescription("Telefon rehberi")).atPosition(2).onChildView(withContentDescription("Toplu Test +905550005555 numarasını seç")).perform(click());
             onView(withHint("Rehberde ara")).perform(typeText("Rehber"),closeSoftKeyboard());
             onView(withText("2 numara seçildi")).check(matches(isDisplayed()));screenshot("06-rehber-beyaz-liste");
             onView(withContentDescription("Seçilen numaraları ekle")).perform(click());
