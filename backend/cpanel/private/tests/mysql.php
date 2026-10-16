@@ -1,0 +1,45 @@
+<?php
+declare(strict_types=1);
+require __DIR__.'/policy.php';
+require dirname(__DIR__).'/vendor/autoload.php';
+require dirname(__DIR__).'/src/Api.php';
+use CallGuard\Api; use CallGuard\Policy;
+// This runner deliberately cannot target a cPanel/production DB.
+if (getenv('CALLGUARD_TEST_DATABASE')!=='callguard_ci') throw new RuntimeException('Only a disposable callguard_ci database is accepted');
+$config=require dirname(__DIR__).'/config.example.php';
+$config['database']=['host'=>'127.0.0.1','port'=>(int)(getenv('CALLGUARD_TEST_PORT')?:3306),'name'=>'callguard_ci','user'=>'root','password'=>getenv('CALLGUARD_TEST_PASSWORD')];
+$config['data_key']=base64_encode(random_bytes(32)); $config['account_key']=base64_encode(random_bytes(32));
+$db=new PDO('mysql:host=127.0.0.1;port='.$config['database']['port'].';dbname=callguard_ci;charset=utf8mb4','root',$config['database']['password'],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+foreach (preg_split('/;\s*(?:\r?\n|$)/',file_get_contents(dirname(__DIR__).'/schema.sql')) as $statement) if (trim($statement)!=='') $db->exec($statement);
+$db->exec('CREATE TABLE mktech_sentinel (id INT PRIMARY KEY, value VARCHAR(20)) ENGINE=InnoDB'); $db->exec("INSERT INTO mktech_sentinel VALUES(1,'untouched')");
+$create=function(string $email) use($db,$config): string {
+ $id=hash_hmac('sha256',$email,base64_decode($config['account_key']));
+ $q=$db->prepare('INSERT INTO cg_users(id,email,password_hash,verified,created_ms) VALUES(?,?,?,1,?)');
+ $q->execute([$id,$email,password_hash(Policy::passwordMaterial('Good test password 123'),PASSWORD_DEFAULT),(int)floor(microtime(true)*1000)]); return $id;
+};
+$alice=$create('alice@example.invalid'); $bob=$create('bob@example.invalid'); $api=new Api($config);
+rejects(fn()=>$api->dispatch('GET','/v1/backup'),401);
+rejects(fn()=>$api->dispatch('POST','/v1/auth/login',['email'=>'alice@example.invalid','password'=>'wrong password']),401);
+$a=$api->dispatch('POST','/v1/auth/login',['email'=>'alice@example.invalid','password'=>'Good test password 123']);
+$b=$api->dispatch('POST','/v1/auth/login',['email'=>'bob@example.invalid','password'=>'Good test password 123']);
+check($a['userId']===$alice && strlen($a['token'])===64,'Real login/session');
+$first=$api->dispatch('POST','/v1/trial',[],$a['token']);
+$second=$api->dispatch('POST','/v1/trial',[],$a['token']);
+check($first['trialEnds']===$second['trialEnds'] && !$first['pro'],'Trial cannot restart');
+$snapshot=['version'=>1,'contacts'=>[['name'=>'Ayşe','number'=>'+905551112233','white'=>true]],'settings'=>['rule'=>'ALL','pro'=>true],'history'=>[['caller'=>'Ayşe','number'=>'+905551112233','video'=>false,'result'=>'İzin verildi','at'=>1700000000000]]];
+$saved=$api->dispatch('PUT','/v1/backup',['revision'=>0,'backup'=>$snapshot],$a['token']);check($saved['revision']===1,'First revision');
+$read=$api->dispatch('GET','/v1/backup',[],$a['token']);check($read['backup']->contacts[0]->name==='Ayşe','Round-trip UTF-8');check(!isset($read['backup']->settings->pro),'Backup cannot elevate license');
+check($api->dispatch('GET','/v1/backup',[],$b['token'])['backup']===null,'Bob cannot see Alice backup');
+check(!str_contains($db->query('SELECT data FROM cg_backups')->fetchColumn(),'Ayşe'),'Backups encrypted at rest');
+rejects(fn()=>$api->dispatch('PUT','/v1/backup',['revision'=>0,'backup'=>$snapshot],$a['token']),409);
+rejects(fn()=>$api->dispatch('POST','/v1/purchase',['token'=>'forged-token'],$a['token']),503);
+check(!$api->dispatch('GET','/v1/entitlement',[],$a['token'])['pro'],'Unverified purchase never grants Pro');
+$api->dispatch('POST','/v1/auth/logout',[],$a['token']);rejects(fn()=>$api->dispatch('GET','/v1/backup',[],$a['token']),401);
+$a2=$api->dispatch('POST','/v1/auth/login',['email'=>'alice@example.invalid','password'=>'Good test password 123']);
+check($api->dispatch('POST','/v1/trial',[],$a2['token'])['trialEnds']===$first['trialEnds'],'Re-login/reinstall cannot reset same account trial');
+$api->dispatch('DELETE','/v1/account',[],$a2['token']);
+check((int)$db->query('SELECT COUNT(*) FROM cg_backups')->fetchColumn()===0,'Account deletion removes backup');
+check((int)$db->query('SELECT COUNT(*) FROM cg_trials')->fetchColumn()===1,'Minimum trial anti-reset ledger retained');
+check($db->query('SELECT value FROM mktech_sentinel')->fetchColumn()==='untouched','No unrelated tables modified');
+check($api->dispatch('GET','/health')['ok']===true,'Health check');
+echo "PASS: MySQL account/session, trial, encrypted backups, account isolation, stale writes, forged payment rejection, logout and deletion\n";

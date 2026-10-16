@@ -2,6 +2,15 @@ name: CallGuard final APK and end-to-end tests
 on:
   push:
     branches: [main]
+    paths:
+      - "app/**"
+      - "fixture/**"
+      - "build.gradle"
+      - "settings.gradle"
+      - "gradle.properties"
+      - "tools/device-tests.sh"
+      - "tools/contact-picker-check.sh"
+      - "tools/release-smoke.py"
   workflow_dispatch:
     inputs:
       run_device_tests:

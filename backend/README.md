@@ -1,3 +1,11 @@
+# CallGuard sunucu seçenekleri
+
+**Güncel hedef: Turhost cPanel, PHP + MySQL.** Kullanıcının mevcut `mktech.net.tr` hostingine göre hazırlanan ana kurulum [cpanel/README.md](cpanel/README.md) belgesindedir. Yeni dosyalar `/callguard/`, ayrı veritabanı ve web kökü dışındaki ayrı anahtarlarla kurulur; `/mktech/` ve ana site değiştirilmez. Sunucuda Node.js/Docker/PostgreSQL desteği varsayılmaz.
+
+Aşağıdaki eski Node.js/PostgreSQL seçeneği yalnızca bağımsız VPS için alternatif olarak tutulmuştur; mevcut Turhost cPanel kurulumu için kullanılmayacaktır.
+
+---
+
 # CallGuard kendi sunucu kurulumu
 
 Firebase kullanılmaz. API Node.js 22, veritabanı PostgreSQL 17, TLS Caddy üzerindedir. Google yalnızca kimlik doğrulama ve Play satın alma doğrulama sağlayıcısıdır. E-posta ile kayıt, doğrulama ve şifre yenileme SMTP ile çalışır.

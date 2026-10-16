@@ -1,0 +1,21 @@
+{
+  "name": "callguard/cpanel-api",
+  "description": "CallGuard isolated PHP and MySQL API",
+  "type": "project",
+  "require": {
+    "php": "^8.2",
+    "ext-pdo": "*",
+    "ext-pdo_mysql": "*",
+    "ext-openssl": "*",
+    "ext-curl": "*",
+    "ext-mbstring": "*",
+    "google/apiclient": "^2.18",
+    "phpmailer/phpmailer": "^6.10"
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "allow-plugins": false
+  },
+  "license": "proprietary"
+}

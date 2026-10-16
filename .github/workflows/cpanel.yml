@@ -1,0 +1,63 @@
+name: CallGuard cPanel PHP package
+on:
+  push:
+    branches: [main]
+    paths: ['backend/cpanel/**', '.github/workflows/cpanel.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: callguard-cpanel
+  cancel-in-progress: true
+jobs:
+  test-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-disposable-test-only
+          MYSQL_DATABASE: callguard_ci
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pci-disposable-test-only"
+          --health-interval=5s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, curl, openssl, mbstring
+          tools: composer:v2
+          coverage: none
+      - name: PHP syntax and policy checks
+        run: |
+          find backend/cpanel -name '*.php' -print0 | xargs -0 -n1 php -l
+          php backend/cpanel/private/tests/policy.php
+      - name: Install bundled PHP libraries
+        run: |
+          composer validate --working-dir=backend/cpanel/private --no-check-lock
+          composer install --working-dir=backend/cpanel/private --no-dev --prefer-dist --no-interaction --optimize-autoloader
+          composer audit --working-dir=backend/cpanel/private --no-dev
+      - name: Disposable MySQL integration checks
+        env:
+          CALLGUARD_TEST_DATABASE: callguard_ci
+          CALLGUARD_TEST_PASSWORD: ci-disposable-test-only
+        run: php backend/cpanel/private/tests/mysql.php
+      - name: Package isolated cPanel directories
+        run: |
+          python3 backend/cpanel/tools/package.py
+          cd backend/cpanel
+          sha256sum CallGuard-cPanel-PHP-MySQL.zip > CallGuard-cPanel-PHP-MySQL.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CallGuard-cPanel-PHP-MySQL
+          path: |
+            backend/cpanel/CallGuard-cPanel-PHP-MySQL.zip
+            backend/cpanel/CallGuard-cPanel-PHP-MySQL.zip.sha256
+      - name: Publish reviewable server package without deploying to hosting
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "server-cpanel-${{ github.run_number }}" backend/cpanel/CallGuard-cPanel-PHP-MySQL.zip backend/cpanel/CallGuard-cPanel-PHP-MySQL.zip.sha256 --title 'CallGuard · Turhost cPanel PHP + MySQL' --notes-file backend/cpanel/README.md --target "$GITHUB_SHA" --prerelease --latest=false
