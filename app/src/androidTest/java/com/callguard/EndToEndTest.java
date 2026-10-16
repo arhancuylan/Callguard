@@ -51,6 +51,7 @@ public class EndToEndTest {
         }finally{instrumentation.getUiAutomation().dropShellPermissionIdentity();}
         shell("pm grant com.callguard.mobile android.permission.READ_CONTACTS");
         try(ActivityScenario<MainActivity> ignored=ActivityScenario.launch(MainActivity.class)){
+            ignored.onActivity(activity->{activity.setShowWhenLocked(true);activity.setTurnScreenOn(true);android.app.KeyguardManager keyguard=(android.app.KeyguardManager)activity.getSystemService(Context.KEYGUARD_SERVICE);keyguard.requestDismissKeyguard(activity,null);});
             nav("Kişiler");onView(withText("＋  Kişi ekle")).perform(scrollTo(),click());onView(withText("Rehberden seç")).perform(click());
             // Async contacts loading is bounded and then the real picker row is clicked.
             long end=System.currentTimeMillis()+8000;while(true){try{onView(withHint("Rehberde ara")).check(matches(isDisplayed()));break;}catch(androidx.test.espresso.NoMatchingViewException e){if(System.currentTimeMillis()>end)throw e;Thread.sleep(100);}}
