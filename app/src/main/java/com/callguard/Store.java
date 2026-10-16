@@ -33,10 +33,13 @@ public final class Store extends SQLiteOpenHelper {
     }
     public void profileSetting(String key,int value){if(!Arrays.asList("days","start","end").contains(key))throw new IllegalArgumentException("Geçersiz ayar");prefs().edit().putInt(profileKey(key),value).apply();changed();}
     public void scheduleEnabled(boolean value){prefs().edit().putBoolean(profileKey("scheduled"),value).apply();changed();}
+    public long pauseUntil(){return prefs().getLong("pauseUntil",0);}
+    public boolean paused(){return ProtectionState.paused(pauseUntil(),System.currentTimeMillis());}
+    public void pauseUntil(long until){prefs().edit().putLong("pauseUntil",Math.max(0,until)).apply();context.sendBroadcast(new Intent(context.getPackageName()+".CHANGED").setPackage(context.getPackageName()));}
     public boolean enabled() {return prefs().getBoolean("enabled",false);}
     public boolean recordOnly() {return prefs().getBoolean("recordOnly",false);}
     public void setting(String key,String value) {android.content.SharedPreferences.Editor edit=prefs().edit().putString(key,value);if(key.equals("rule")||key.equals("media"))edit.putString(profileKey(key),value);edit.apply(); changed();}
-    public void setting(String key,boolean value) {prefs().edit().putBoolean(key,value).apply(); changed();}
+    public void setting(String key,boolean value) {android.content.SharedPreferences.Editor edit=prefs().edit().putBoolean(key,value);if(key.equals("enabled"))edit.remove("pauseUntil");edit.apply(); changed();}
     public void add(String name,String number,boolean white) {addAll(Collections.singletonList(new Rules.Contact(0,name,number,white)),white);}
     public void addAll(List<Rules.Contact> contacts,boolean white) {
         List<ContentValues> rows=new ArrayList<>();
@@ -61,7 +64,7 @@ public final class Store extends SQLiteOpenHelper {
     public Cursor history() {return getReadableDatabase().query("history",null,null,null,null,null,"at DESC, _id DESC");}
     public int today() {
         Calendar cal=Calendar.getInstance();cal.set(Calendar.HOUR_OF_DAY,0);cal.set(Calendar.MINUTE,0);cal.set(Calendar.SECOND,0);cal.set(Calendar.MILLISECOND,0);
-        try(Cursor c=getReadableDatabase().rawQuery("SELECT count(*) FROM history WHERE at>=? AND result=?",new String[]{String.valueOf(cal.getTimeInMillis()),"Reddetme isteği gönderildi"})){c.moveToFirst();return c.getInt(0);}
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT count(*) FROM history WHERE at>=? AND result LIKE ?",new String[]{String.valueOf(cal.getTimeInMillis()),"Reddetme isteği gönderildi%"})){c.moveToFirst();return c.getInt(0);}
     }
     public void clearHistory(){getWritableDatabase().delete("history",null,null);changed();}
     private void changed(){CloudSync.dirty(context);context.sendBroadcast(new Intent(context.getPackageName()+".CHANGED").setPackage(context.getPackageName()));}

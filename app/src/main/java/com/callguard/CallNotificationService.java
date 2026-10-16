@@ -19,8 +19,9 @@ public final class CallNotificationService extends NotificationListenerService {
     @Override public void onNotificationPosted(StatusBarNotification sbn){
         if(sbn==null)return;
         trace("posted owner="+sbn.getPackageName()+" enabled="+store.enabled());
+        if(!"com.whatsapp".equals(sbn.getPackageName())&&!"com.whatsapp.w4b".equals(sbn.getPackageName()))return;
         if(store.enabled()&&BuildConfig.COMMERCIAL_ENABLED&&!LicenseManager.allowed(this)){store.setting("enabled",false);CloudWorker.notifyUser(this,"Deneme sona erdi","Otomatik koruma durduruldu. Listelerin korunuyor.",2);return;}
-        if(!store.enabled()||!store.scheduleActive())return;
+        if(!store.enabled())return;
         String owner=sbn.getPackageName();
         if(!"com.whatsapp".equals(owner)&&!"com.whatsapp.w4b".equals(owner))return;
         Notification n=sbn.getNotification();
@@ -44,15 +45,19 @@ public final class CallNotificationService extends NotificationListenerService {
         String number=Rules.number(uri);if(number.isEmpty())number=Rules.number(caller);
         Notification.Action action=n.actions[incoming.declineIndex];
         long startedAt=n.when>0?n.when:sbn.getPostTime();
-        String policy=mode.name()+":"+media.name()+":"+recordOnly+":"+blocked;
+        boolean paused=store.paused();boolean schedule=store.scheduleActive();
+        String reason=ProtectionState.reason(mode,listed);
+        String policy=mode.name()+":"+media.name()+":"+recordOnly+":"+blocked+":"+paused+":"+schedule;
         if(!processed.claim(sbn.getKey(),startedAt,caller,incoming.media,action.actionIntent,policy))return;
         boolean video=incoming.media==Rules.Media.VIDEO;
-        if(!Rules.selected(media,incoming.media)){store.history(caller,number,video,"Seçilen arama türünün dışında");return;}
-        if(!blocked){store.history(caller,number,video,"İzin verildi");return;}
-        if(recordOnly){store.history(caller,number,video,"Yalnızca kaydedildi");return;}
-        if(action.actionIntent==null||!owner.equals(action.actionIntent.getCreatorPackage())){store.history(caller,number,video,"Reddetme eylemi doğrulanamadı");return;}
-        try{action.actionIntent.send();store.history(caller,number,video,"Reddetme isteği gönderildi");}
-        catch(PendingIntent.CanceledException|SecurityException ex){store.history(caller,number,video,"Reddetme isteği gönderilemedi");}
+        if(paused){store.history(caller,number,video,ProtectionState.result("İzin verildi","Koruma geçici olarak duraklatıldı"));return;}
+        if(!schedule){store.history(caller,number,video,ProtectionState.result("İzin verildi","Seçili profilin gün ve saatleri dışında"));return;}
+        if(!Rules.selected(media,incoming.media)){store.history(caller,number,video,ProtectionState.result("Seçilen arama türünün dışında",video?"Görüntülü aramalar engelleme kapsamında değil":"Sesli aramalar engelleme kapsamında değil"));return;}
+        if(!blocked){store.history(caller,number,video,ProtectionState.result("İzin verildi",reason));return;}
+        if(recordOnly){store.history(caller,number,video,ProtectionState.result("Yalnızca kaydedildi","Yalnızca kaydet modu · "+reason));return;}
+        if(action.actionIntent==null||!owner.equals(action.actionIntent.getCreatorPackage())){store.history(caller,number,video,ProtectionState.result("Reddetme eylemi doğrulanamadı",reason));return;}
+        try{action.actionIntent.send();store.history(caller,number,video,ProtectionState.result("Reddetme isteği gönderildi",reason));}
+        catch(PendingIntent.CanceledException|SecurityException ex){store.history(caller,number,video,ProtectionState.result("Reddetme isteği gönderilemedi",reason));}
     }
     @Override public void onNotificationRemoved(StatusBarNotification sbn){if(sbn!=null)processed.remove(sbn.getKey());}
 }

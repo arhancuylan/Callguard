@@ -20,6 +20,9 @@ import java.util.concurrent.*;
 /** Native, responsive Turkish UI. No remote content or sample records. */
 public final class MainActivity extends Activity {
     private static final int GREEN=Color.rgb(8,99,78), INK=Color.rgb(13,22,38), MUTED=Color.rgb(99,110,125), BG=Color.rgb(245,247,244), BORDER=Color.rgb(222,228,225);
+    private final Handler statusHandler=new Handler(Looper.getMainLooper());
+    private String displayedProtection="";
+    private final Runnable statusTick=new Runnable(){public void run(){if(tab==0&&!isFinishing()&&!displayedProtection.equals(protectionSnapshot()))render();statusHandler.postDelayed(this,1000);}};
     private ProBilling billing;
     private Store store; private LinearLayout root,body,nav; private ScrollView scroll;
     private int tab=0; private boolean white=true; private boolean rendering=false;
@@ -35,7 +38,8 @@ public final class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         render();
     }
-    @Override protected void onResume(){super.onResume();if(store!=null)render();CloudSync.periodic(this);CloudSync.enqueue(this);}
+    @Override protected void onResume(){super.onResume();if(store!=null)render();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
+    @Override protected void onPause(){statusHandler.removeCallbacks(statusTick);super.onPause();}
     @Override protected void onSaveInstanceState(Bundle out){out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
     @Override protected void onDestroy(){unregisterReceiver(refresh);if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
@@ -62,16 +66,17 @@ public final class MainActivity extends Activity {
         nav=row();nav.setPadding(dp(8),dp(9),dp(8),dp(10));nav.setBackgroundColor(Color.WHITE);
         String[] names={"Koruma","Kişiler","Geçmiş","Ayarlar"};String[] icons={"shield","people","clock","settings"};
         for(int j=0;j<4;j++){final int index=j;LinearLayout item=column();item.setGravity(Gravity.CENTER);item.setPadding(dp(2),dp(2),dp(2),dp(2));item.addView(icon(icons[j],j==tab?GREEN:MUTED,23));gap(item,5);TextView label=text(names[j],12,j==tab?GREEN:MUTED,j==tab);label.setGravity(Gravity.CENTER);item.addView(label,new LinearLayout.LayoutParams(-1,-2));item.setContentDescription(names[j]+" sekmesi");item.setFocusable(true);item.setOnClickListener(v->{tab=index;render();});nav.addView(item,new LinearLayout.LayoutParams(0,dp(56),1));}
-        root.addView(nav,new LinearLayout.LayoutParams(-1,-2));rendering=false;
+        root.addView(nav,new LinearLayout.LayoutParams(-1,-2));if(tab==0)displayedProtection=protectionSnapshot();rendering=false;
     }
     private void home(){
         LinearLayout brand=row();brand.addView(icon("shield",GREEN,31));TextView word=text("CallGuard",22,INK,true);LinearLayout.LayoutParams wp=new LinearLayout.LayoutParams(0,-2,1);wp.leftMargin=dp(9);brand.addView(word,wp);
         TextView menu=text("⋮",26,MUTED,true);menu.setGravity(Gravity.CENTER);menu.setContentDescription("Diğer seçenekler");menu.setOnClickListener(v->{PopupMenu p=new PopupMenu(this,menu);p.getMenu().add("Ayarlar").setOnMenuItemClickListener(i->{tab=3;render();return true;});p.getMenu().add("Program hakkında").setOnMenuItemClickListener(i->{about();return true;});p.show();});brand.addView(menu,new LinearLayout.LayoutParams(dp(48),dp(48)));body.addView(brand);gap(body,20);
         heading("Huzurla devam et.","WhatsApp aramalarını yönet.");
         LinearLayout protect=card();GradientDrawable grad=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{GREEN,Color.rgb(2,80,65)});grad.setCornerRadius(dp(18));protect.setBackground(grad);
-        LinearLayout pr=row();pr.addView(icon("shield",Color.WHITE,60));LinearLayout lines=column();TextView status=text(store.enabled()?"Koruma açık":"Koruma kapalı",18,Color.WHITE,true);lines.addView(status);gap(lines,5);lines.addView(text(access()?"● Bildirim erişimi etkin":"○ Bildirim erişimi gerekli",12,Color.rgb(209,238,220),false));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.leftMargin=dp(12);pr.addView(lines,lp);
+        LinearLayout pr=row();pr.addView(icon("shield",Color.WHITE,60));LinearLayout lines=column();TextView status=text(ProtectionState.title(store.enabled(),access(),LicenseManager.allowed(this),store.paused(),store.scheduleActive(),store.recordOnly(),CallNotificationService.connected),18,Color.WHITE,true);lines.addView(status);gap(lines,5);lines.addView(text(protectionDetail(),12,Color.rgb(209,238,220),false));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.leftMargin=dp(12);pr.addView(lines,lp);
         Switch toggle=new Switch(this);toggle.setContentDescription("Koruma anahtarı");toggle.setChecked(store.enabled());toggle.setThumbTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));toggle.setTrackTintList(android.content.res.ColorStateList.valueOf(Color.rgb(139,210,153)));toggle.setOnCheckedChangeListener((b,on)->{if(on&&!access()){toggle.setChecked(false);permissionExplanation();return;}if(on&&BuildConfig.COMMERCIAL_ENABLED&&!LicenseManager.allowed(this)){toggle.setChecked(false);beginTrial();return;}store.setting("enabled",on);});pr.addView(toggle);protect.addView(pr);
         if(!access()){TextView permission=button("Bildirim erişimini aç",false,this::permissionExplanation);permission.setTextColor(Color.WHITE);gap(protect,10);protect.addView(permission);}
+        if(store.enabled()){gap(protect,10);TextView pause=button(store.paused()?"Şimdi devam et":"Korumayı duraklat",false,()->{if(store.paused()){store.pauseUntil(0);render();}else pauseChoices();});pause.setTextColor(Color.WHITE);protect.addView(pause);}
         LinearLayout accessCard=card();accessCard.addView(text(LicenseManager.status(this),14,GREEN,true));gap(accessCard,6);accessCard.addView(text(store.scheduleActive()?"Seçili profil: "+profileName(store.profile()):"Zamanlama dışında · otomatik koruma bekliyor",12,MUTED,false));
         LinearLayout rules=card();rules.addView(text("Engelleme kuralı",16,INK,true));gap(rules,8);
         rule(rules,"Tüm gelen aramaları reddet","Seçilen arama türünde herkesi reddet.",Rules.Mode.ALL);
@@ -81,6 +86,23 @@ public final class MainActivity extends Activity {
         stats.addView(stat("people",String.valueOf(count),showWhite?"İzin verilen kişi":"Kara listedeki kişi"),new LinearLayout.LayoutParams(0,-2,1));View spacer=new View(this);stats.addView(spacer,new LinearLayout.LayoutParams(dp(12),1));stats.addView(stat("phone",String.valueOf(store.today()),"Bugünkü reddetme isteği"),new LinearLayout.LayoutParams(0,-2,1));body.addView(stats);gap(body,13);
         body.addView(button("Kişileri düzenle    ›",true,()->{white=store.effectiveMode()!=Rules.Mode.BLACKLIST;tab=1;render();}));gap(body,10);
         TextView notice=text("ⓘ  Bağlı cihazlarda kısa süreli zil duyulabilir.",12,GREEN,false);notice.setPadding(dp(12),dp(11),dp(12),dp(11));notice.setBackground(bg(Color.rgb(230,242,231),12));body.addView(notice);
+    }
+    private String protectionSnapshot(){return ProtectionState.title(store.enabled(),access(),LicenseManager.allowed(this),store.paused(),store.scheduleActive(),store.recordOnly(),CallNotificationService.connected)+":"+store.pauseUntil();}
+    private String protectionDetail(){
+        if(!access())return "Aramaları yönetmek için bildirim erişimini aç.";
+        if(!LicenseManager.allowed(this))return LicenseManager.status(this);
+        if(!store.enabled())return "Başlamak için koruma anahtarını aç.";
+        if(store.paused())return "Devam: "+new SimpleDateFormat("d MMM HH:mm",new Locale("tr")).format(new Date(store.pauseUntil()));
+        if(!store.scheduleActive())return "Seçili profilin gün ve saatleri dışında.";
+        if(!CallNotificationService.connected)return "İzin açık; servis henüz bağlanmadı. İzni yönet ekranından kontrol et.";
+        if(store.recordOnly())return "Aramalar kaydedilir; otomatik reddedilmez.";
+        return "Bildirim erişimi ve otomatik reddetme etkin.";
+    }
+    private void pauseChoices(){
+        new AlertDialog.Builder(this).setTitle("Korumayı duraklat").setItems(new String[]{"15 dakika","1 saat","Bugünün sonuna kadar"},(dialog,index)->{
+            long until=index==0?System.currentTimeMillis()+15*60000L:index==1?System.currentTimeMillis()+60*60000L:java.time.ZonedDateTime.now().toLocalDate().plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+            store.pauseUntil(until);render();toast("Süre dolunca koruma, seçili profil ve kullanım hakkına göre devam eder.");
+        }).setNegativeButton("Vazgeç",null).show();
     }
     private LinearLayout stat(String type,String value,String label){LinearLayout c=column();c.setPadding(dp(14),dp(13),dp(14),dp(13));c.setBackground(bg(Color.WHITE,16));LinearLayout r=row();r.addView(icon(type,GREEN,24));TextView val=text(value,27,INK,true);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,-2);p.leftMargin=dp(9);r.addView(val,p);c.addView(r);gap(c,5);TextView desc=text(label,12,MUTED,false);desc.setMinHeight(dp(34));c.addView(desc);return c;}
     private void rule(LinearLayout parent,String title,String subtitle,Rules.Mode mode){
@@ -178,7 +200,7 @@ public final class MainActivity extends Activity {
         if(!any){LinearLayout empty=card();empty.addView(text("Henüz arama kaydı yok.",17,INK,true));gap(empty,7);empty.addView(text("Seçili kurallara uyan yeni çağrılar burada görünecek.",14,MUTED,false));}
         gap(body,8);TextView clear=button("Geçmişi temizle",false,()->new AlertDialog.Builder(this).setTitle("Geçmiş temizlensin mi?").setMessage("Bu cihazdaki tüm arama kayıtları silinecek.").setNegativeButton("Vazgeç",null).setPositiveButton("Temizle",(d,w)->{store.clearHistory();render();}).show());clear.setEnabled(any);clear.setAlpha(any?1:0.45f);body.addView(clear);
     }
-    private void historyAction(String caller,String number,String result){boolean destinationWhite=!"İzin verildi".equals(result);String label=destinationWhite?"Beyaz listeye ekle":"Kara listeye ekle";new AlertDialog.Builder(this).setTitle(caller).setItems(new String[]{label},(d,w)->{if(number.isEmpty())manual(caller.equals("Bilinmeyen numara")?"":caller,"",destinationWhite);else new AlertDialog.Builder(this).setTitle(label+"?").setMessage(caller+"\n"+number).setNegativeButton("Vazgeç",null).setPositiveButton("Ekle",(dialog,which)->{store.add(caller,number,destinationWhite);toast("Kişi "+(destinationWhite?"beyaz":"kara")+" listeye eklendi.");}).show();}).setNegativeButton("Kapat",null).show();}
+    private void historyAction(String caller,String number,String result){boolean destinationWhite=!ProtectionState.permitted(result);String label=destinationWhite?"Beyaz listeye ekle":"Kara listeye ekle";new AlertDialog.Builder(this).setTitle(caller).setItems(new String[]{label},(d,w)->{if(number.isEmpty())manual(caller.equals("Bilinmeyen numara")?"":caller,"",destinationWhite);else new AlertDialog.Builder(this).setTitle(label+"?").setMessage(caller+"\n"+number).setNegativeButton("Vazgeç",null).setPositiveButton("Ekle",(dialog,which)->{store.add(caller,number,destinationWhite);toast("Kişi "+(destinationWhite?"beyaz":"kara")+" listeye eklendi.");}).show();}).setNegativeButton("Kapat",null).show();}
     private void settings(){heading("Her şey kontrolünde","");LinearLayout permission=card();LinearLayout r=row();r.addView(text("Bildirim erişimi",17,INK,true),new LinearLayout.LayoutParams(0,-2,1));TextView badge=text(access()?"● Etkin":"○ Kapalı",12,access()?GREEN:MUTED,true);badge.setPadding(dp(9),dp(5),dp(9),dp(5));badge.setBackground(bg(Color.rgb(222,243,224),20));r.addView(badge);permission.addView(r);gap(permission,7);permission.addView(text("Uygulamanın WhatsApp aramalarını yönetebilmesi için gereklidir.",13,MUTED,false));gap(permission,10);permission.addView(button("İzni yönet",false,this::permissionExplanation));
         scheduleCard();
         accountCard();
