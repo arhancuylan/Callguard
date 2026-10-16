@@ -52,11 +52,9 @@ public final class MainActivity extends Activity {
     private boolean access(){String value=Settings.Secure.getString(getContentResolver(),"enabled_notification_listeners");if(value==null)return false;ComponentName expected=new ComponentName(this,CallNotificationService.class);for(String item:value.split(":")){if(expected.equals(ComponentName.unflattenFromString(item)))return true;}return false;}
     private void render(){
         if(isFinishing())return;rendering=true;
-        if(root==null){
-            root=column();root.setBackgroundColor(BG);
-            root.setOnApplyWindowInsetsListener((view,insets)->{view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});
-            setContentView(root);root.requestApplyInsets();
-        } else root.removeAllViews();
+        root=column();root.setBackgroundColor(BG);
+        root.setOnApplyWindowInsetsListener((view,insets)->{view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});
+        setContentView(root);root.requestApplyInsets();
         scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);
         body=column();body.setPadding(dp(22),dp(20),dp(22),dp(18));scroll.addView(body,new ScrollView.LayoutParams(-1,-2));root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         if(tab==0)home();else if(tab==1)people();else if(tab==2)history();else settings();

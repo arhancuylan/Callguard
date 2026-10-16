@@ -2,6 +2,10 @@
 set -euo pipefail
 mkdir -p evidence
 collect_evidence() {
+  timeout 10s adb shell screencap -p /sdcard/last-screen.png || true
+  timeout 10s adb pull /sdcard/last-screen.png evidence/last-screen.png || true
+  timeout 10s adb pull /sdcard/release-ui.xml evidence/last-ui.xml || true
+  timeout 10s adb shell dumpsys window windows > evidence/windows.txt || true
   timeout 15s adb logcat -d > evidence/device.log || true
   timeout 15s adb shell dumpsys notification > evidence/notification-state.txt || true
   timeout 15s adb pull /sdcard/Android/data/com.callguard.mobile/files/screenshots evidence/ || true
