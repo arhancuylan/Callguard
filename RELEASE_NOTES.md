@@ -1,11 +1,9 @@
-CallGuard 1.1.18-preview · Uygulama içi ADB araç sessizliği
+CallGuard 1.1.19-preview · Bildirimden kablosuz ADB eşleştirme
 
-- Shizuku uygulaması, SDK’sı, sağlayıcısı ve izin isteği kaldırıldı. Ayrı uygulama kurulmaz.
-- Android 11+ kablosuz ADB eşleştirmesi CallGuard içinden yapılır. Geliştirici seçenekleri ve Android’in eşleştirme onayı gereklidir; uygulama bunları kendi kendine açmaz.
-- Yalnızca aynı telefonun 127.0.0.1 adresine bağlanılır. Eşleştirme portu/kodu ve bağlantı portu için uygulama içinde yönlendirme vardır.
-- Seçilen aracın görüşme profili, kısa ömürlü ADB shell yardımcısıyla okunur/değiştirilir/doğrulanır. Diğer Bluetooth cihazları ve müzik profili değiştirilmez. Araç sessizliği bütün Bluetooth görüşmelerini etkiler, kişi istisnası yoktur.
-- Önceki sürümün yerel geri yükleme kaydı korunur. İşlem başarısız veya belirsizse kayıt silinmez.
-- ADB kimliği Android Keystore ile şifreli saklanır; bulut/Drive yedeğine katılmaz. Eşleştirme kodu saklanmaz. İstenildiğinde ADB bağlantısı kesilebilir; bu işlem araç ayarını geri açmaz.
-- Yeniden başlatma/ağ değişimi sonrası ADB bağlantısını yeniden açmak gerekebilir. Normal WhatsApp koruması ADB’den bağımsızdır.
-- APK güncelleme imzası, birim testleri, lint ve yerel kütüphane envanteri derleme aşamasında kontrol edilir. Gerçek Samsung/Fiat kablosuz eşleştirme ve HFP davranışı bu platformda doğrulanamaz.
-- Bu sürüm Whatsmeow içermez; o yöntem sonraki ayrı deney sürümüdür.
+- Android’in geçici eşleştirme kodu penceresini kapatmadan, CallGuard bildirimindeki Kod gir düğmesi ile kod gönderilir. Bölünmüş ekran veya başka uygulama gerekmez.
+- Bildirimle eşleştirmeyi başlat düğmesi gerekli bildirim iznini ister, kısa süreli dinlemeyi başlatır ve geliştirici ayarlarını açar.
+- Yalnızca bu telefona ait ADB pairing servisi DNS-SD üzerinden bulunur. Port bulunursa yalnızca 6 haneli kod girilir. Bulunmazsa bildirime “port kod” yazılabilir.
+- Başarılı eşleştirmeden sonra yerel ADB bağlantısı otomatik aranıp doğrulanır; bulunamazsa mevcut bağlantı portu ekranı kullanılabilir.
+- Dinleme en fazla altı dakika sürer; Vazgeç düğmesi veya tamamlanma ile biter. Yeniden başlatılmaz, kod kaydedilmez ve dış uygulamaların çağırabileceği servis sunulmaz.
+- Mevcut araç ayarı ve geri yükleme kaydı korunur; normal WhatsApp koruması değişmez.
+- Kısa birim testleri, lint, APK/AAB derlemesi ve güncelleme imzası kontrolü uygulanır. Samsung bildirim perdesi/gerçek ADB eşleştirmesi kullanıcı cihazında sınanmalıdır.

@@ -3,12 +3,17 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="com.android.vending.BILLING" />
     <application android:label="CallGuard" android:icon="@drawable/ic_launcher" android:theme="@style/AppTheme" android:usesCleartextTraffic="false" android:allowBackup="false" android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity>
+        <service android:name=".AdbPairingService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-started local ADB pairing via notification reply while Android Settings displays its expiring pairing code; maximum six minutes; stopped after setup." />
+        </service>
         <service android:name=".CallNotificationService" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true" android:label="CallGuard arama koruması">
             <meta-data android:name="android.service.notification.default_autobind_listenerservice" android:value="true" />
             <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>

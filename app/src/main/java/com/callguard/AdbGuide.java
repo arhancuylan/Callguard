@@ -27,8 +27,8 @@ final class AdbGuide {
         button(panel,"1 · Geliştirici seçeneklerini aç",()->open(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)));
         label(panel,"Menü açılmazsa Telefon hakkında → Yazılım bilgileri → Yapım numarası üzerine 7 kez dokun.",12);
         button(panel,"2 · Kablosuz hata ayıklamayı aç",this::wireless);
-        label(panel,"Ayarlar ve CallGuard’ı bölünmüş ekranda aç. Kablosuz hata ayıklama → Eşleştirme koduyla cihaz eşleştir ekranını açık tut. Bu pencereyi kapatmak kodu geçersiz kılabilir.",12);
-        button(panel,"3 · Kodla CallGuard’ı eşleştir",this::pair);
+        label(panel,"Önce bildirimle eşleştirmeyi başlat. Android’in Eşleştirme koduyla cihaz eşleştir penceresi açıkken bildirim perdesini indir, CallGuard bildirimini genişlet ve Kod gir düğmesine dokun. Bildirimin gövdesine basıp uygulamaya dönme.",12);
+        button(panel,"3 · Bildirimle eşleştirmeyi başlat",this::pair);
         button(panel,"4 · Yerel ADB bağlantısını aç",this::connect);
         label(panel,"Eşleştirme portu ile ana ekrandaki IP adresi ve bağlantı noktası farklıdır. Bağlantı açarken ana ekrandaki portu kullan. Yalnızca bu telefona bağlanılır; IP adresi girmen gerekmez.",12);
         button(panel,"5 · Araç seç ve sessizliği aç",()->{if(!CarSilence.ready()){message.accept("Önce yerel ADB bağlantısını aç.");return;}dialog.dismiss();choose.run();});
@@ -55,14 +55,9 @@ final class AdbGuide {
     private EditText input(LinearLayout panel,String hint,boolean code){EditText view=new EditText(activity);view.setHint(hint);view.setSingleLine(true);view.setInputType(InputType.TYPE_CLASS_NUMBER|(code?InputType.TYPE_NUMBER_VARIATION_PASSWORD:0));view.setSaveEnabled(false);view.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);panel.addView(view,new LinearLayout.LayoutParams(-1,-2));return view;}
     private void pair(){
         if(Build.VERSION.SDK_INT<30){message.accept("Kablosuz eşleştirme için Android 11 veya üzeri gerekir.");return;}
-        LinearLayout panel=column();label(panel,"Android’in eşleştirme penceresindeki portu ve 6 haneli kodu gir. Eşleştirme ekranı açık kalsın. Kod kaydedilmez.",13);
-        EditText port=input(panel,"Eşleştirme portu",false),code=input(panel,"6 haneli eşleştirme kodu",true);
-        AlertDialog entry=new AlertDialog.Builder(activity).setTitle("CallGuard’ı bu telefonla eşleştir").setView(panel).setNegativeButton("Vazgeç",null).setPositiveButton("Eşleştir",null).create();entry.show();entry.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-        entry.getButton(-1).setOnClickListener(v->{try{
-            int number=CarCommandProtocol.port(port.getText().toString());String pin=code.getText().toString().trim();if(!pin.matches("[0-9]{6}"))throw new IllegalArgumentException();code.setText("");
-            car.pair(number,pin,()->{if(!activity.isDestroyed()){entry.dismiss();message.accept("CallGuard eşleşti. Şimdi ana kablosuz hata ayıklama ekranındaki bağlantı portuyla bağlantıyı aç.");refresh();}});
-        }catch(IllegalArgumentException ex){message.accept("Geçerli port ve 6 haneli kod gir.");}});
+        ((MainActivity)activity).startNotificationPairing();
     }
+
     private void connect(){
         LinearLayout panel=column();label(panel,"Kablosuz hata ayıklamanın ana ekranındaki IP adresi ve bağlantı noktası satırında, iki noktadan sonraki sayıyı gir. Eşleştirme portunu kullanma.",13);EditText port=input(panel,"Bağlantı portu",false);
         int previous=activity.getSharedPreferences("local-adb",0).getInt("port",0);if(previous>0)port.setText(Integer.toString(previous));
