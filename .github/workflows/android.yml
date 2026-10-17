@@ -70,9 +70,9 @@ jobs:
           node --test backend/functions/test/*.test.mjs
       - name: Unit tests, lint and APK builds
         env:
-          CALLGUARD_API_BASE: ${{ vars.CALLGUARD_API_BASE }}
-          CALLGUARD_GOOGLE_CLIENT_ID: ${{ vars.CALLGUARD_GOOGLE_CLIENT_ID }}
-          CALLGUARD_COMMERCIAL: ${{ vars.CALLGUARD_COMMERCIAL }}
+          CALLGUARD_API_BASE: https://mktech.net.tr/callguard
+          CALLGUARD_GOOGLE_CLIENT_ID: 169220010049-rgo9tkv3usis6sl7orp68v51r8ms6viv.apps.googleusercontent.com
+          CALLGUARD_COMMERCIAL: 'false'
         id: build
         run: |
           gradle --no-daemon :app:testDebugUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease || { cat app/build/intermediates/lint_intermediate_text_report/*/*/*.txt 2>/dev/null; exit 1; }
@@ -123,27 +123,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         if: always() && steps.build.conclusion == 'success'
         run: |
-          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.1.2-preview.apk
-          cp app/build/outputs/bundle/release/app-release.aab CallGuard-1.1.2-preview.aab
-          sha256sum CallGuard-1.1.2-preview.apk > CallGuard-1.1.2-preview.apk.sha256
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.1.2-preview.apk
+          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.1.3-preview.apk
+          cp app/build/outputs/bundle/release/app-release.aab CallGuard-1.1.3-preview.aab
+          sha256sum CallGuard-1.1.3-preview.apk > CallGuard-1.1.3-preview.apk.sha256
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.1.3-preview.apk
           gh release download v1.0.0 --pattern CallGuard-1.0.0.apk --dir previous
           signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           previous_cert=$("$signer" verify --print-certs previous/CallGuard-1.0.0.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
-          current_cert=$("$signer" verify --print-certs CallGuard-1.1.2-preview.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
+          current_cert=$("$signer" verify --print-certs CallGuard-1.1.3-preview.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
           test -n "$previous_cert"
           test "$previous_cert" = "$current_cert"
           echo 'Update signing certificate matches version 1.0.0.' 
       - uses: actions/upload-artifact@v4
         if: always() && steps.build.conclusion == 'success'
         with:
-          name: CallGuard-1.1.2-preview
+          name: CallGuard-1.1.3-preview
           path: |
-            CallGuard-1.1.2-preview.apk
-            CallGuard-1.1.2-preview.apk.sha256
-            CallGuard-1.1.2-preview.aab
+            CallGuard-1.1.3-preview.apk
+            CallGuard-1.1.3-preview.apk.sha256
+            CallGuard-1.1.3-preview.aab
       - name: Publish APK after required checks; call integration can be validated on the phone
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v1.1.2-preview" CallGuard-1.1.2-preview.apk CallGuard-1.1.2-preview.apk.sha256 CallGuard-1.1.2-preview.aab --title "CallGuard 1.1.2-preview · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --prerelease --latest=false
+          gh release create "v1.1.3-preview" CallGuard-1.1.3-preview.apk CallGuard-1.1.3-preview.apk.sha256 CallGuard-1.1.3-preview.aab --title "CallGuard 1.1.3-preview · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --prerelease --latest=false

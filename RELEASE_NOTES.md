@@ -1,9 +1,11 @@
-CallGuard 1.1.2-preview · Call Guard by AC
+CallGuard 1.1.3-preview · Call Guard by AC
 
-- Ana ekranda gerçek koruma durumu: izin, servis bağlantısı, kullanım hakkı, zaman profili ve yalnızca kayıt modu.
-- Korumayı 15 dakika, 1 saat veya gün sonuna kadar duraklat; istediğin an devam et. Süre dolunca mevcut profil ve lisans koşulları geçerlidir.
-- Geçmişte her yeni kararın nedeni: beyaz/kara liste, herkesi engelleme, ses/video kapsamı, zamanlama ve duraklatma.
-- Geçmişten izin verilen çağrıyı kara listeye, reddetme isteği olan çağrıyı beyaz listeye ekleme korunur.
-- Mevcut WhatsApp bildirimindeki Reddet eylemi kullanılır; Bluetooth'a ilk iletimi engelleme garantisi verilmez.
+- Canlı API: https://mktech.net.tr/callguard
+- Ayarlar > Hesap ve bulut yedekleme: Google ile devam et ve e-posta ile giriş/kayıt.
+- E-posta doğrulama, yeniden doğrulama gönderimi ve parola sıfırlama.
+- Kullanıcı onayıyla CallGuard listeleri, ayarlar ve en fazla 500 arama kaydını yedekleme; son yedek zamanı ve geri yükleme.
+- Yedekler kullanıcının Google Drive hesabında değil, CallGuard'ın ayrı Turhost veritabanında saklanır. Telefon rehberinin tamamı gönderilmez.
+- E-posta formu klavye açıkken kaydırılabilir; kayıt parolası en az 12 karakterdir.
+- Mevcut engelleme, duraklatma ve açıklamalı geçmiş korunur.
 
-Bu önizlemede ödeme alınmaz; bulut ve ticari kullanım için canlı sunucu ve Google Play yapılandırması gerekir. Gerçek WhatsApp/araç testi kullanıcı cihazında yapılacaktır. APK mevcut 1.x sürümünün üzerine aynı imzayla güncellenir.
+Bu sürümde ticari kilit ve ödeme KAPALIDIR. Google OAuth Android istemcisi ve Web istemcisi yapılandırılmış olmalıdır; sunucunun config.php dosyasına aynı Web Client ID girilmelidir. Google girişinin gerçek telefondaki sonucu bu derlemeyle test edilecektir. Buluttan geri yükleme korumayı kapalı bırakır; kullanıcı yeniden açar. Gerçek çağrı/Bluetooth testi kullanıcı cihazında yapılacaktır.
