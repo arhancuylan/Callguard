@@ -21,7 +21,8 @@ public final class CarProfileService {
             Object instance=thread.getMethod("currentActivityThread").invoke(null);
             if(instance==null)instance=thread.getMethod("systemMain").invoke(null);
             context=(Context)thread.getMethod("getSystemContext").invoke(instance);
-            context=context.createPackageContext("com.android.shell",Context.CONTEXT_IGNORE_SECURITY);
+            Context shell=context.createPackageContext("com.android.shell",Context.CONTEXT_IGNORE_SECURITY);
+            context=new android.content.ContextWrapper(shell){@Override public Context getApplicationContext(){return this;}};
         }
         if(adapter==null){
             try{BluetoothManager manager=(BluetoothManager)context.getSystemService(Context.BLUETOOTH_SERVICE);if(manager!=null)adapter=manager.getAdapter();}catch(RuntimeException ignored){}

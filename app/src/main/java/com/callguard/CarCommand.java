@@ -7,6 +7,12 @@ public final class CarCommand {
     public static void main(String[] args) {
         if(android.os.Process.myUid()!=2000&&android.os.Process.myUid()!=0){System.exit(1);return;}
         Looper.prepareMainLooper();
+        // ActivityThread owns Handlers: bootstrap it on the main Looper, not the worker
+        // that subsequently waits for Bluetooth profile callbacks.
+        try {
+            Class<?> thread=Class.forName("android.app.ActivityThread");
+            if(thread.getMethod("currentActivityThread").invoke(null)==null)thread.getMethod("systemMain").invoke(null);
+        } catch(Exception ex){System.out.println("CGCAR1:ERROR");System.out.flush();System.exit(1);return;}
         new Thread(()->{
             try {
                 CarCommandProtocol.validate(args);
