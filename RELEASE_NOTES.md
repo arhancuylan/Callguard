@@ -1,10 +1,10 @@
-CallGuard 1.1.12-preview · Araç sessizliği (Shizuku, deneysel)
+CallGuard 1.1.13-preview · Uygulama içinden Shizuku kurulumu
 
-- Ayarlara WhatsApp korumasından bağımsız Araç sessizliği bölümü eklendi.
-- Resmi Shizuku kurulumu, açık yetkilendirme, eşleşmiş araç seçimi ve tüm görüşmelere etkisi için uygulama içi açıklama/onay eklendi.
-- Yalnızca seçilen cihazın HEADSET/HFP görüşme profili kapatılır; A2DP müzik ve diğer cihazların profilleri değiştirilmez. Beyaz liste istisnası yoktur; telefonun kendisinde çağrı devam edebilir. LE Audio desteklenmez.
-- Eski politika işlemden önce yerelde kalıcı kaydedilir. Kapatırken aynı cihazın önceki ayarı geri yüklenir. Belirsizlik/izin kaybı varsa geri alma kaydı korunur ve doğrulanmış aktif durum gösterilmez.
-- Shizuku yokken Bluetooth araç ayarlarındaki Aramalar seçeneğiyle elle geri alma yolu sunulur. Uygulamayı kaldırmadan/verilerini temizlemeden önce modu kapatmak gerekir.
-- Kurulum/sınırlar: diagnostics/car-silence-setup.txt. Ödeme kapalıdır.
+- Araç sessizliği bölümüne Shizuku’yu kur ve Shizuku’yu aç düğmeleri eklendi.
+- Kur düğmesi resmî Google Play sayfasını açar; Play Store yoksa resmî Shizuku indirme sayfasına yönlendirir. Alternatif resmî indirme bağlantısı da sunulur.
+- Kurulum ekranı yüklü/başlatılmamış/izin gerekli/hazır durumlarını gösterir. Shizuku’dan dönüşte durum güncellenir.
+- Geliştirici ayarları ve CallGuard için Shizuku izni doğrudan açılabilir. Shizuku hazır değilken araç seçimi kurulum ekranına yönlendirir.
+- Android’in kurulum, kablosuz hata ayıklama eşleştirmesi ve yetki onayları kullanıcı tarafından verilir; sessiz üçüncü taraf APK kurulumu veya otomatik eşleştirme yapılmaz.
+- Yalnızca Shizuku paketine yönelik görünürlük bildirimi eklendi; tüm uygulamaları listeleme izni eklenmedi. Araç politikası ve geri yükleme akışı korunur.
 
-Kısa politika birim testleri, lint, APK/AAB derlemesi ve imza kontrolleri çalıştırılır. Bu ortamda gerçek Shizuku + Samsung + araç uçtan uca testi yapılamaz. Deneysel araç modu telefonda doğrulanmalıdır. Mevcut WhatsApp reddetme, bildirim temizliği ve yedekleme korunur.
+Ödeme kapalıdır. Kısa testler/lint/derleme/imza kontrolleri yapılır. Gerçek Shizuku ve araç testi telefonda yapılmalıdır.
