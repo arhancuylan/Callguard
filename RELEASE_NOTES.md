@@ -1,11 +1,8 @@
-CallGuard 1.1.3-preview · Call Guard by AC
+CallGuard 1.1.4-preview · Call Guard by AC
 
-- Canlı API: https://mktech.net.tr/callguard
-- Ayarlar > Hesap ve bulut yedekleme: Google ile devam et ve e-posta ile giriş/kayıt.
-- E-posta doğrulama, yeniden doğrulama gönderimi ve parola sıfırlama.
-- Kullanıcı onayıyla CallGuard listeleri, ayarlar ve en fazla 500 arama kaydını yedekleme; son yedek zamanı ve geri yükleme.
-- Yedekler kullanıcının Google Drive hesabında değil, CallGuard'ın ayrı Turhost veritabanında saklanır. Telefon rehberinin tamamı gönderilmez.
-- E-posta formu klavye açıkken kaydırılabilir; kayıt parolası en az 12 karakterdir.
-- Mevcut engelleme, duraklatma ve açıklamalı geçmiş korunur.
+- Ayarlarda yedekleme, geri yükleme, profil ve diğer ayar işlemlerinden sonra kaydırma konumu korunur.
+- Bulut eşitlemesinin arka plan yenilemeleri ekranı başa döndürmez.
+- Her ana sekme kendi kaydırma konumunu hatırlar; ekran yeniden oluşturulunca da konumlar geri yüklenir.
+- Mevcut Google/e-posta girişi, bulut yedekleme ve WhatsApp reddetme yöntemi korunur.
 
-Bu sürümde ticari kilit ve ödeme KAPALIDIR. Google OAuth Android istemcisi ve Web istemcisi yapılandırılmış olmalıdır; sunucunun config.php dosyasına aynı Web Client ID girilmelidir. Google girişinin gerçek telefondaki sonucu bu derlemeyle test edilecektir. Buluttan geri yükleme korumayı kapalı bırakır; kullanıcı yeniden açar. Gerçek çağrı/Bluetooth testi kullanıcı cihazında yapılacaktır.
+Bu önizlemede ödeme ve ticari kilit kapalıdır. APK önceki 1.x sürümlerinin üzerine aynı sertifikayla güncellenir. Uzun emülatör/çağrı testleri çalıştırılmamıştır; cihazdaki kaydırma davranışı kullanıcı tarafından doğrulanacaktır.

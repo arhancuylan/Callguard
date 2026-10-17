@@ -25,13 +25,14 @@ public final class MainActivity extends Activity {
     private final Runnable statusTick=new Runnable(){public void run(){if(tab==0&&!isFinishing()&&!displayedProtection.equals(protectionSnapshot()))render();statusHandler.postDelayed(this,1000);}};
     private ProBilling billing;
     private Store store; private LinearLayout root,body,nav; private ScrollView scroll;
+    private final int[] tabScrollY=new int[4];
     private int tab=0; private boolean white=true; private boolean rendering=false;
     private String search=""; private LinearLayout peopleRows;
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final BroadcastReceiver refresh=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(!rendering)render();}};
     @Override public void onCreate(Bundle state){
         super.onCreate(state);store=new Store(this);
-        if(state!=null){tab=state.getInt("tab");white=state.getBoolean("white",true);search=state.getString("search","");}
+        if(state!=null){tab=state.getInt("tab");white=state.getBoolean("white",true);search=state.getString("search","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
         if(Build.VERSION.SDK_INT>=33)registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"),Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"));
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
@@ -40,7 +41,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onResume(){super.onResume();if(store!=null)render();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
     @Override protected void onPause(){statusHandler.removeCallbacks(statusTick);super.onPause();}
-    @Override protected void onSaveInstanceState(Bundle out){out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
+    @Override protected void onSaveInstanceState(Bundle out){out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
     @Override protected void onDestroy(){unregisterReceiver(refresh);if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private GradientDrawable bg(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
@@ -60,13 +61,23 @@ public final class MainActivity extends Activity {
         root=column();root.setBackgroundColor(BG);
         root.setOnApplyWindowInsetsListener((view,insets)->{view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});
         setContentView(root);root.requestApplyInsets();
+        final int renderedTab=tab;
+        final int restoreY=tabScrollY[renderedTab];
+        final boolean[] restoring={true};
         scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);
+        final ScrollView renderedScroll=scroll;
+        renderedScroll.setOnScrollChangeListener((view,x,y,oldX,oldY)->{if(!restoring[0]&&scroll==renderedScroll)tabScrollY[renderedTab]=y;});
         body=column();body.setPadding(dp(22),dp(20),dp(22),dp(18));scroll.addView(body,new ScrollView.LayoutParams(-1,-2));root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         if(tab==0)home();else if(tab==1)people();else if(tab==2)history();else settings();
         nav=row();nav.setPadding(dp(8),dp(9),dp(8),dp(10));nav.setBackgroundColor(Color.WHITE);
         String[] names={"Koruma","Kişiler","Geçmiş","Ayarlar"};String[] icons={"shield","people","clock","settings"};
         for(int j=0;j<4;j++){final int index=j;LinearLayout item=column();item.setGravity(Gravity.CENTER);item.setPadding(dp(2),dp(2),dp(2),dp(2));item.addView(icon(icons[j],j==tab?GREEN:MUTED,23));gap(item,5);TextView label=text(names[j],12,j==tab?GREEN:MUTED,j==tab);label.setGravity(Gravity.CENTER);item.addView(label,new LinearLayout.LayoutParams(-1,-2));item.setContentDescription(names[j]+" sekmesi");item.setFocusable(true);item.setOnClickListener(v->{tab=index;render();});nav.addView(item,new LinearLayout.LayoutParams(0,dp(56),1));}
-        root.addView(nav,new LinearLayout.LayoutParams(-1,-2));if(tab==0)displayedProtection=protectionSnapshot();rendering=false;
+        root.addView(nav,new LinearLayout.LayoutParams(-1,-2));
+        // Restore only this render's view, after measuring its new content. Repeated cloud
+        // broadcasts must not replace the saved position with a fresh view's initial zero.
+        body.setFocusableInTouchMode(true);body.requestFocus();
+        renderedScroll.post(()->{if(scroll!=renderedScroll)return;renderedScroll.scrollTo(0,restoreY);restoring[0]=false;tabScrollY[renderedTab]=renderedScroll.getScrollY();});
+        if(tab==0)displayedProtection=protectionSnapshot();rendering=false;
     }
     private void home(){
         LinearLayout brand=row();brand.addView(icon("shield",GREEN,31));TextView word=text("CallGuard",22,INK,true);LinearLayout.LayoutParams wp=new LinearLayout.LayoutParams(0,-2,1);wp.leftMargin=dp(9);brand.addView(word,wp);
