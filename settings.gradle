@@ -3,3 +3,5 @@ dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_P
 rootProject.name = 'CallGuard'
 include ':app'
 include ':fixture'
+
+include ':adb-transport'

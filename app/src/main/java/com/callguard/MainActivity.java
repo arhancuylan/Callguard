@@ -25,7 +25,7 @@ public final class MainActivity extends Activity {
     private String driveAction="",driveAccount="";
     private ProBilling billing;
     private CarSilence carSilence;
-    private ShizukuGuide shizukuGuide;
+    private AdbGuide adbGuide;
     private Store store; private LinearLayout root,body,nav; private ScrollView scroll;
     private final int[] tabScrollY=new int[5];
     private boolean backupPage=false;
@@ -36,18 +36,18 @@ public final class MainActivity extends Activity {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final BroadcastReceiver refresh=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(!rendering)render();}};
     @Override public void onCreate(Bundle state){
-        super.onCreate(state);store=new Store(this);carSilence=new CarSilence(this,()->{if(!isFinishing()&&!isDestroyed()){render();if(shizukuGuide!=null)shizukuGuide.refresh();}},this::toast);
+        super.onCreate(state);store=new Store(this);carSilence=new CarSilence(this,()->{if(!isFinishing()&&!isDestroyed()){render();if(adbGuide!=null)adbGuide.refresh();}},this::toast);
         if(state!=null){tab=state.getInt("tab");historyTodayOnly=state.getBoolean("historyTodayOnly",false);white=state.getBoolean("white",true);search=state.getString("search","");backupPage=state.getBoolean("backupPage",false);driveAction=state.getString("driveAction","");driveAccount=state.getString("driveAccount","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
         if(Build.VERSION.SDK_INT>=33)registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"),Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"));
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-        render();if(state!=null&&state.getBoolean("shizukuGuideOpen",false))root.post(this::carSilenceDetails);
+        render();if(state!=null&&state.getBoolean("adbGuideOpen",false))root.post(this::carSilenceDetails);
     }
-    @Override protected void onResume(){super.onResume();BackgroundProtection.reconnect(this);if(store!=null)render();if(shizukuGuide!=null)shizukuGuide.resume();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
-    @Override protected void onPause(){if(shizukuGuide!=null)shizukuGuide.pause();statusHandler.removeCallbacks(statusTick);super.onPause();}
-    @Override protected void onSaveInstanceState(Bundle out){out.putBoolean("historyTodayOnly",historyTodayOnly);out.putBoolean("shizukuGuideOpen",shizukuGuide!=null&&shizukuGuide.showing());out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
-    @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(shizukuGuide!=null)shizukuGuide.close();if(carSilence!=null)carSilence.close();if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
+    @Override protected void onResume(){super.onResume();BackgroundProtection.reconnect(this);if(store!=null)render();if(adbGuide!=null)adbGuide.resume();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
+    @Override protected void onPause(){if(adbGuide!=null)adbGuide.pause();statusHandler.removeCallbacks(statusTick);super.onPause();}
+    @Override protected void onSaveInstanceState(Bundle out){out.putBoolean("historyTodayOnly",historyTodayOnly);out.putBoolean("adbGuideOpen",adbGuide!=null&&adbGuide.showing());out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
+    @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(adbGuide!=null)adbGuide.close();if(carSilence!=null)carSilence.close();if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private GradientDrawable bg(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
     private GradientDrawable outline(int color){GradientDrawable d=bg(color,14);d.setStroke(dp(1),BORDER);return d;}
@@ -232,11 +232,10 @@ public final class MainActivity extends Activity {
         LinearLayout about=card();about.addView(text("Program hakkında",17,INK,true));gap(about,16);TextView sig=text("Call Guard by AC",25,GREEN,true);sig.setGravity(Gravity.CENTER);about.addView(sig);gap(about,4);TextView version=text("Sürüm "+BuildConfig.VERSION_NAME,12,MUTED,false);version.setGravity(Gravity.CENTER);about.addView(version);gap(about,12);TextView disclaimer=text("WhatsApp veya Meta ile bağlantılı değildir.",11,MUTED,false);disclaimer.setGravity(Gravity.CENTER);about.addView(disclaimer);
     }
     private void carSilenceCard(){
-        LinearLayout card=card();card.addView(text("Araç sessizliği · Shizuku",17,INK,true));gap(card,8);
+        LinearLayout card=card();card.addView(text("Araç sessizliği · CallGuard ADB",17,INK,true));gap(card,8);
         card.addView(text(carSilence.status(),13,MUTED,false));gap(card,8);
         card.addView(text("Seçtiğin aracın bütün Bluetooth görüşmelerini etkiler; beyaz liste istisnası yoktur. Telefonun kendisinde çağrı devam edebilir. WhatsApp koruma anahtarından bağımsızdır.",12,MUTED,false));gap(card,12);
         card.addView(button(carSilence.saved()?"Kapat ve önceki ayarı geri yükle":"Araç seç ve sessizliği aç",carSilence.saved(),()->{if(carSilence.saved())carSilence.restore();else chooseSilentCar();}));gap(card,8);
-        if(!shizukuInstalled()){card.addView(button("Shizuku’yu kur",true,this::installShizuku));gap(card,8);}
         card.addView(button("Kurulum ve durum",false,this::carSilenceDetails));
     }
     private void chooseSilentCar(){
@@ -251,26 +250,15 @@ public final class MainActivity extends Activity {
             for(int i=0;i<labels.length;i++){org.json.JSONObject device=devices.optJSONObject(i);labels[i]=device.optString("name")+" · "+device.optString("address")+(device.optInt("state")==2?" · görüşme bağlantısı var":"");}
             new AlertDialog.Builder(this).setTitle("Yalnızca aracını seç").setItems(labels,(d,index)->{
                 org.json.JSONObject device=devices.optJSONObject(index);String address=device.optString("address"),name=device.optString("name");
-                new AlertDialog.Builder(this).setTitle("Araç görüşmeleri kapatılsın mı?").setMessage(name+"\nBeyaz listedekiler ve normal telefon aramaları dahil, bu aracın Bluetooth görüşme profili kapatılır. Müzik profili değiştirilmez. Bu işlem çağrıyı telefonun kendisinde reddetmez.\nUygulamayı silmeden veya verilerini temizlemeden önce bu modu kapat. Shizuku çalışmıyorsa telefonun Bluetooth → araç → Aramalar ayarını elle açabilirsin.")
+                new AlertDialog.Builder(this).setTitle("Araç görüşmeleri kapatılsın mı?").setMessage(name+"\nBeyaz listedekiler ve normal telefon aramaları dahil, bu aracın Bluetooth görüşme profili kapatılır. Müzik profili değiştirilmez. Bu işlem çağrıyı telefonun kendisinde reddetmez.\nUygulamayı silmeden veya verilerini temizlemeden önce bu modu kapat. ADB bağlantısı yoksa telefonun Bluetooth → araç → Aramalar ayarını elle açabilirsin.")
                     .setNegativeButton("Vazgeç",null).setPositiveButton("Anladım, aç",(dialog,which)->carSilence.enable(address,name)).show();
             }).setNegativeButton("Vazgeç",null).show();
         });
     }
-    private static final String SHIZUKU_PACKAGE="moe.shizuku.privileged.api";
-    private boolean shizukuInstalled(){try{getPackageManager().getApplicationInfo(SHIZUKU_PACKAGE,0);return true;}catch(PackageManager.NameNotFoundException ex){return false;}}
     private void openWeb(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse(url)));}catch(ActivityNotFoundException|SecurityException ex){toast("Bağlantı açılamadı: "+url);}}
-    private void installShizuku(){
-        try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("market://details?id="+SHIZUKU_PACKAGE)).setPackage("com.android.vending"));}
-        catch(ActivityNotFoundException|SecurityException ex){openWeb("https://shizuku.rikka.app/download/");}
-    }
-    private void launchShizuku(){
-        Intent launch=getPackageManager().getLaunchIntentForPackage(SHIZUKU_PACKAGE);
-        if(launch==null){installShizuku();return;}
-        try{startActivity(launch);}catch(ActivityNotFoundException|SecurityException ex){toast("Shizuku açılamadı. Telefonun uygulama listesinden açmayı dene.");}
-    }
     private void carSilenceDetails(){
-        if(shizukuGuide==null)shizukuGuide=new ShizukuGuide(this,this::shizukuInstalled,this::installShizuku,this::launchShizuku,carSilence::authorize,this::chooseSilentCar,carSilence::inspect,()->{try{startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));}catch(ActivityNotFoundException|SecurityException ex){toast("Telefonun Bluetooth ayarlarını aç.");}});
-        shizukuGuide.show();
+        if(adbGuide==null)adbGuide=new AdbGuide(this,carSilence,this::chooseSilentCar,this::toast);
+        adbGuide.show();
     }
     private void backgroundCard(){
         LinearLayout background=card();background.addView(button("Arka planda çalışma    ›",false,this::backgroundDetails));gap(background,7);

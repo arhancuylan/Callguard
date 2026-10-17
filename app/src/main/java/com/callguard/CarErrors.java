@@ -3,7 +3,7 @@ package com.callguard;
 /** Never show raw framework exceptions (which can include device addresses or internal strings). */
 final class CarErrors {
     static String describe(Exception ex){
-        if(ex instanceof SecurityException)return "Bluetooth / Shizuku iznini kontrol et. Varsa geri yükleme kaydı korundu.";
+        if(ex instanceof SecurityException)return "Bluetooth iznini ve yerel ADB bağlantısını kontrol et. Varsa geri yükleme kaydı korundu.";
         String message=ex.getMessage();
         if(java.util.Arrays.asList(
             "Bluetooth kapalı veya kullanılamıyor.","Bluetooth cihaz listesi alınamadı.",
@@ -17,7 +17,7 @@ final class CarErrors {
             "Geri yükleme kaydı yazılamadı. Araç ayarı değiştirilmedi.",
             "Araç ayarı geri yüklendi, kayıt temizlenemedi. Yeniden kontrol et."
         ).contains(message))return message;
-        return "Araç işlemi tamamlanamadı. Bluetooth açıkken yeniden dene; kontrol işlemi için Shizuku iznini de kontrol et. Varsa geri yükleme kaydı korundu.";
+        return "Araç işlemi tamamlanamadı. Bluetooth açıkken yeniden dene; Kurulum ve durum bölümünden eşleştirme kodunu ve bağlantı portunu kontrol et. Varsa geri yükleme kaydı korundu.";
     }
     private CarErrors(){}
 }

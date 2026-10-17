@@ -1,9 +1,11 @@
-CallGuard 1.1.16-preview · Araç seçme listesindeki null hatasını giderme
+CallGuard 1.1.17-preview · Uygulama içi ADB araç sessizliği
 
-- Eşleşmiş cihaz listesi artık Shizuku’dan nullable JSON metni olarak alınmaz. Android Bluetooth API’si normal uygulama sürecinde kullanılır; Shizuku yalnızca görüşme profilini kontrol eder.
-- Android 12+ için Yakındaki cihazlar / BLUETOOTH_CONNECT izni, araç listesi açılırken açıklamayla istenir. Eski Android için BLUETOOTH izni API 30 ile sınırlıdır. Yeni cihaz taraması veya konum izni eklenmez.
-- Adsız, eksik veya yinelenmiş cihaz kayıtları güvenli işlenir. Boş liste ile liste okuma hatası birbirinden ayrılır.
-- String.length gibi teknik hata mesajları doğrudan kullanıcıya gösterilmez. Teknik kayıtta yalnızca işlem aşaması ve hata sınıfı tutulur; cihaz adı/adresi yazılmaz. Geri yükleme kaydı hata halinde korunur.
-- Mevcut araç profili seçimi/değişikliği, önceki ayarı geri alma ve Shizuku kurulum yardımcısı korunur.
-
-Regresyon birim testleri, lint, APK/AAB derleme ve imza kontrolleri çalıştırılır. Ekran görüntüsündeki hatanın tam yığını elde olmadığı için uzaktaki cihazda kesin kaynak doğrulanamadı; hataya açık liste taşıma yolu kaldırıldı. Gerçek Samsung Bluetooth/araç işlemi telefonda tekrar denenmelidir. Ödeme kapalıdır.
+- Shizuku uygulaması, SDK’sı, sağlayıcısı ve izin isteği kaldırıldı. Ayrı uygulama kurulmaz.
+- Android 11+ kablosuz ADB eşleştirmesi CallGuard içinden yapılır. Geliştirici seçenekleri ve Android’in eşleştirme onayı gereklidir; uygulama bunları kendi kendine açmaz.
+- Yalnızca aynı telefonun 127.0.0.1 adresine bağlanılır. Eşleştirme portu/kodu ve bağlantı portu için uygulama içinde yönlendirme vardır.
+- Seçilen aracın görüşme profili, kısa ömürlü ADB shell yardımcısıyla okunur/değiştirilir/doğrulanır. Diğer Bluetooth cihazları ve müzik profili değiştirilmez. Araç sessizliği bütün Bluetooth görüşmelerini etkiler, kişi istisnası yoktur.
+- Önceki sürümün yerel geri yükleme kaydı korunur. İşlem başarısız veya belirsizse kayıt silinmez.
+- ADB kimliği Android Keystore ile şifreli saklanır; bulut/Drive yedeğine katılmaz. Eşleştirme kodu saklanmaz. İstenildiğinde ADB bağlantısı kesilebilir; bu işlem araç ayarını geri açmaz.
+- Yeniden başlatma/ağ değişimi sonrası ADB bağlantısını yeniden açmak gerekebilir. Normal WhatsApp koruması ADB’den bağımsızdır.
+- APK güncelleme imzası, birim testleri, lint ve yerel kütüphane envanteri derleme aşamasında kontrol edilir. Gerçek Samsung/Fiat kablosuz eşleştirme ve HFP davranışı bu platformda doğrulanamaz.
+- Bu sürüm Whatsmeow içermez; o yöntem sonraki ayrı deney sürümüdür.

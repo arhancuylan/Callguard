@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.*;
 import org.json.*;
 
-/** Local typed device list: no nullable JSON string received from a Shizuku Binder. */
+/** Local typed device list: no nullable JSON string received from a remote helper. */
 final class PairedCarCatalog {
     static final class Device {
         final String address,name;
