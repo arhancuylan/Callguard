@@ -23,6 +23,7 @@ public final class MainActivity extends Activity {
     private final Handler statusHandler=new Handler(Looper.getMainLooper());
     private String displayedProtection="";
     private final Runnable statusTick=new Runnable(){public void run(){if(tab==0&&!isFinishing()&&!displayedProtection.equals(protectionSnapshot()))render();statusHandler.postDelayed(this,1000);}};
+    private String driveAction="",driveAccount="";
     private ProBilling billing;
     private Store store; private LinearLayout root,body,nav; private ScrollView scroll;
     private final int[] tabScrollY=new int[4];
@@ -32,7 +33,7 @@ public final class MainActivity extends Activity {
     private final BroadcastReceiver refresh=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(!rendering)render();}};
     @Override public void onCreate(Bundle state){
         super.onCreate(state);store=new Store(this);
-        if(state!=null){tab=state.getInt("tab");white=state.getBoolean("white",true);search=state.getString("search","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
+        if(state!=null){tab=state.getInt("tab");white=state.getBoolean("white",true);search=state.getString("search","");driveAction=state.getString("driveAction","");driveAccount=state.getString("driveAccount","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
         if(Build.VERSION.SDK_INT>=33)registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"),Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"));
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
@@ -41,7 +42,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onResume(){super.onResume();if(store!=null)render();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
     @Override protected void onPause(){statusHandler.removeCallbacks(statusTick);super.onPause();}
-    @Override protected void onSaveInstanceState(Bundle out){out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
+    @Override protected void onSaveInstanceState(Bundle out){out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
     @Override protected void onDestroy(){unregisterReceiver(refresh);if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private GradientDrawable bg(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
@@ -215,6 +216,7 @@ public final class MainActivity extends Activity {
     private void settings(){heading("Her şey kontrolünde","");LinearLayout permission=card();LinearLayout r=row();r.addView(text("Bildirim erişimi",17,INK,true),new LinearLayout.LayoutParams(0,-2,1));TextView badge=text(access()?"● Etkin":"○ Kapalı",12,access()?GREEN:MUTED,true);badge.setPadding(dp(9),dp(5),dp(9),dp(5));badge.setBackground(bg(Color.rgb(222,243,224),20));r.addView(badge);permission.addView(r);gap(permission,7);permission.addView(text("Uygulamanın WhatsApp aramalarını yönetebilmesi için gereklidir.",13,MUTED,false));gap(permission,10);permission.addView(button("İzni yönet",false,this::permissionExplanation));
         scheduleCard();
         accountCard();
+        driveCard();
         LinearLayout type=card();type.addView(text("Arama türü",17,INK,true));gap(type,12);segmented(type,new String[]{"Sesli","Görüntülü","Her ikisi"},store.effectiveMedia().ordinal(),i->store.setting("media",Rules.Media.values()[i].name()));gap(type,8);type.addView(text("Kurallar seçtiğin arama türüne uygulanır.",12,MUTED,false));
         LinearLayout action=card();action.addView(text("İşlem modu",17,INK,true));gap(action,8);radio(action,"Otomatik reddet",!store.recordOnly(),()->store.setting("recordOnly",false));radio(action,"Yalnızca kaydet",store.recordOnly(),()->store.setting("recordOnly",true));gap(action,8);action.addView(text("Yalnızca kaydet modu çağrıyı susturmaz.",12,MUTED,false));
         LinearLayout about=card();about.addView(text("Program hakkında",17,INK,true));gap(about,16);TextView sig=text("Call Guard by AC",25,GREEN,true);sig.setGravity(Gravity.CENTER);about.addView(sig);gap(about,4);TextView version=text("Sürüm "+BuildConfig.VERSION_NAME,12,MUTED,false);version.setGravity(Gravity.CENTER);about.addView(version);gap(about,12);TextView disclaimer=text("WhatsApp veya Meta ile bağlantılı değildir.",11,MUTED,false);disclaimer.setGravity(Gravity.CENTER);about.addView(disclaimer);
@@ -232,7 +234,63 @@ public final class MainActivity extends Activity {
         long last=cloud.getLong("lastBackup",0);if(last>0)card.addView(text("Son yedek: "+new SimpleDateFormat("d MMM yyyy HH:mm",new Locale("tr")).format(new Date(last)),12,MUTED,false));String error=cloud.getString("lastError","");if(!error.isEmpty())card.addView(text(error,12,MUTED,false));gap(card,8);
         if(auto){card.addView(button("Otomatik yedeklemeyi kapat",false,()->{cloud.edit().putBoolean("autoBackup",false).apply();render();}));gap(card,8);}
         card.addView(button("Hesaptan çıkış yap",false,()->new AlertDialog.Builder(this).setTitle("Çıkış yapılsın mı?").setMessage("Cihazındaki listeler kalır. Hesaba bağlı deneme veya Pro korumasını kullanmak için tekrar giriş yapman gerekir.").setNegativeButton("Vazgeç",null).setPositiveButton("Çıkış yap",(d,w)->runCloud("Çıkış yapılıyor",()->CloudClient.request(this,"POST","/v1/auth/logout",new org.json.JSONObject(),true),result->{CloudSync.cancel(this);SessionVault.clear(this);if(BuildConfig.COMMERCIAL_ENABLED)store.setting("enabled",false);render();})).show()));gap(card,8);
-        card.addView(button("Hesabı ve bulut verilerini sil",false,()->new AlertDialog.Builder(this).setTitle("Hesabı kalıcı olarak sil?").setMessage("Bulut yedeğin, hesabın ve bu cihazdaki CallGuard listeleri/geçmişi silinir. Satın alma ve deneme için gerekli asgari kayıtlar korunur.").setNegativeButton("Vazgeç",null).setPositiveButton("Hesabımı sil",(d,w)->runCloud("Hesap siliniyor",()->CloudClient.request(this,"DELETE","/v1/account",null,true),result->{CloudSync.cancel(this);SessionVault.clear(this);store.getWritableDatabase().delete("contacts",null,null);store.clearHistory();store.prefs().edit().clear().apply();render();toast("Hesabın ve uygulama verilerin silindi.");})).show()));
+        card.addView(button("Hesabı ve bulut verilerini sil",false,()->new AlertDialog.Builder(this).setTitle("Hesabı kalıcı olarak sil?").setMessage("CallGuard sunucusundaki yedeğin, hesabın ve bu cihazdaki listeler/geçmiş silinir. Google Drive kopyaların ayrı saklanır; onları Google Drive bölümünden ayrıca silebilirsin. Satın alma ve deneme için gerekli asgari kayıtlar korunur.").setNegativeButton("Vazgeç",null).setPositiveButton("Hesabımı sil",(d,w)->runCloud("Hesap siliniyor",()->CloudClient.request(this,"DELETE","/v1/account",null,true),result->{CloudSync.cancel(this);SessionVault.clear(this);store.getWritableDatabase().delete("contacts",null,null);store.clearHistory();store.prefs().edit().clear().apply();render();toast("Hesabın ve uygulama verilerin silindi.");})).show()));
+    }
+    private void driveCard(){
+        LinearLayout card=card();card.addView(text("Google Drive yedeği",17,INK,true));gap(card,8);
+        card.addView(text("İsteğe bağlı ek yedekleme. Google veya e-posta ile girişten bağımsızdır. Yalnızca CallGuard'ın Drive uygulama alanına erişilir; diğer dosyaların okunmaz.",13,MUTED,false));gap(card,12);
+        card.addView(button("Google Drive'a şimdi yedekle",true,()->new AlertDialog.Builder(this).setTitle("Google Drive'a yedekle?").setMessage("CallGuard listeleri, ayarları ve en fazla 500 arama kaydı seçeceğin Google hesabının uygulamaya özel Drive alanına gönderilecek. Her işlem ayrı bir tarihli kopya oluşturur. Drive yedeklemesi bu sürümde elle başlatılır; CallGuard bulut yedeği ayrı yönetilir.").setNegativeButton("Vazgeç",null).setPositiveButton("Hesap seç",(d,w)->startDrive("backup")).show()));gap(card,8);
+        card.addView(button("Drive yedeklerini görüntüle / geri yükle",false,()->startDrive("list")));gap(card,8);
+        android.content.SharedPreferences drive=getSharedPreferences("drive",0);long last=drive.getLong("lastBackup",0);
+        if(last>0)card.addView(text("Bu cihazdan son Drive yedeği: "+new SimpleDateFormat("d MMM yyyy HH:mm",new Locale("tr")).format(new Date(last))+"\nGoogle hesabı: "+drive.getString("account",""),12,MUTED,false));
+        gap(card,8);card.addView(text("Kopyalar Drive'ın normal dosya listesinde görünmez. Geri yüklemek veya tek bir kopyayı silmek için yukarıdaki düğmeyi kullan. Google erişimini hesabının Üçüncü taraf bağlantıları bölümünden kaldırabilirsin; bu, CallGuard sunucusundaki hesabını silmez.",11,MUTED,false));
+    }
+    private void startDrive(String action){
+        if(!driveAction.isEmpty()){toast("Önce açık Google hesap seçimini tamamla.");return;}
+        driveAction=action;
+        try{Intent pick=com.google.android.gms.common.AccountPicker.newChooseAccountIntent(new com.google.android.gms.common.AccountPicker.AccountChooserOptions.Builder().setAllowableAccountsTypes(Arrays.asList("com.google")).build());startActivityForResult(pick,5900);}
+        catch(Exception ex){driveAction="";toast("Google hesap seçimi açılamadı. Google Play Hizmetlerini kontrol et.");}
+    }
+    @Override protected void onActivityResult(int request,int result,Intent data){
+        super.onActivityResult(request,result,data);
+        if(request==5900){
+            if(result!=RESULT_OK||data==null){driveAction="";return;}
+            String name=data.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME);
+            if(name==null||name.isEmpty()){driveAction="";toast("Google hesabı seçilmedi.");return;}
+            driveAccount=name;
+            com.google.android.gms.auth.api.identity.AuthorizationRequest authorization=com.google.android.gms.auth.api.identity.AuthorizationRequest.builder().setAccount(new android.accounts.Account(name,"com.google")).setRequestedScopes(Collections.singletonList(new com.google.android.gms.common.api.Scope(DriveBackup.SCOPE))).build();
+            com.google.android.gms.auth.api.identity.Identity.getAuthorizationClient(this).authorize(authorization).addOnSuccessListener(this,response->{
+                if(response.hasResolution()){try{startIntentSenderForResult(response.getPendingIntent().getIntentSender(),5901,null,0,0,0);}catch(Exception ex){driveAction="";toast("Drive izin ekranı açılamadı.");}}
+                else finishDriveAuthorization(response);
+            }).addOnFailureListener(this,error->{driveAction="";toast("Drive izni alınamadı. Google Cloud yapılandırmasını ve test hesabını kontrol et.");});
+        }else if(request==5901){
+            if(result!=RESULT_OK||data==null){driveAction="";toast("Drive izni verilmedi; mevcut yedekler değişmedi.");return;}
+            try{finishDriveAuthorization(com.google.android.gms.auth.api.identity.Identity.getAuthorizationClient(this).getAuthorizationResultFromIntent(data));}
+            catch(Exception ex){driveAction="";toast("Drive yetkilendirmesi tamamlanamadı.");}
+        }
+    }
+    private void finishDriveAuthorization(com.google.android.gms.auth.api.identity.AuthorizationResult result){
+        final String action=driveAction,account=driveAccount,token=result.getAccessToken();driveAction="";
+        if(action.isEmpty())return;
+        if(token==null||token.isEmpty()||!result.getGrantedScopes().contains(DriveBackup.SCOPE)){toast("CallGuard Drive uygulama alanı izni verilmedi.");return;}
+        final DriveBackup drive=new DriveBackup(token);
+        if(action.equals("backup"))runCloud("Drive'a yedekleniyor",()->{org.json.JSONObject saved=drive.save(BackupData.export(store));getSharedPreferences("drive",0).edit().putLong("lastBackup",saved.getLong("savedAt")).putString("account",account).apply();return saved;},saved->{render();toast("Google Drive yedeği oluşturuldu.");});
+        else runCloud("Drive yedekleri alınıyor",()->new org.json.JSONObject().put("files",drive.list()),response->{
+            try{org.json.JSONArray files=response.getJSONArray("files");if(files.length()==0){toast("Seçilen Google hesabında CallGuard Drive yedeği yok.");return;}
+                String[] labels=new String[files.length()];for(int i=0;i<labels.length;i++){String time=files.getJSONObject(i).optString("createdTime","");try{labels[i]=new SimpleDateFormat("d MMM yyyy HH:mm:ss",new Locale("tr")).format(Date.from(java.time.Instant.parse(time)));}catch(Exception e){labels[i]=time;}}
+                new AlertDialog.Builder(this).setTitle("Drive yedekleri · "+account).setItems(labels,(dialog,index)->{try{driveSnapshot(drive,files.getJSONObject(index).getString("id"),labels[index],account);}catch(Exception ex){toast("Drive yedeği seçilemedi.");}}).setNegativeButton("Kapat",null).show();
+            }catch(Exception ex){toast("Drive yedek listesi okunamadı.");}
+        });
+    }
+    private void driveSnapshot(DriveBackup drive,String id,String date,String account){
+        new AlertDialog.Builder(this).setTitle(date).setItems(new String[]{"Bu yedeği geri yükle","Bu Drive yedeğini sil"},(dialog,index)->{
+            if(index==1)new AlertDialog.Builder(this).setTitle("Drive kopyası kalıcı olarak silinsin mi?").setMessage(account+"\n"+date+"\nYalnızca bu kopya silinir; cihazındaki veriler ve CallGuard bulut yedeği korunur.").setNegativeButton("Vazgeç",null).setPositiveButton("Sil",(d,w)->runCloud("Drive yedeği siliniyor",()->{drive.delete(id);return new org.json.JSONObject();},done->toast("Seçilen Drive kopyası silindi."))).show();
+            else new AlertDialog.Builder(this).setTitle("Drive yedeği geri yüklensin mi?").setMessage(account+"\n"+date+"\nCihazındaki CallGuard listeleri, ayarlar ve geçmiş bu kopyayla değiştirilecek. Koruma ve otomatik CallGuard bulut yedeklemesi kapatılır; buluttaki mevcut yedek korunur. Daha sonra kendin açabilirsin.").setNegativeButton("Vazgeç",null).setPositiveButton("Geri yükle",(d,w)->runCloud("Drive'dan geri yükleniyor",()->{
+                org.json.JSONObject backup=drive.read(id);
+                synchronized(CloudSync.BACKUP_LOCK){getSharedPreferences("cloud",0).edit().putBoolean("autoBackup",false).putBoolean("backupReady",false).apply();CloudSync.cancel(this);BackupData.restore(store,backup);}
+                return new org.json.JSONObject();
+            },done->{render();toast("Drive yedeği geri yüklendi. Koruma ve otomatik bulut yedeklemesini kontrol et.");})).show();
+        }).setNegativeButton("Kapat",null).show();
     }
     private void acceptSession(org.json.JSONObject result){
         try{SessionVault.save(this,result.getString("token"),result.getString("userId"),result.getString("email"));CloudSync.periodic(this);CloudSync.enqueue(this);render();toast("Giriş yapıldı. Mevcut bulut yedeğini geri yükleyebilirsin.");}catch(Exception ex){toast("Oturum güvenli biçimde kaydedilemedi.");}
