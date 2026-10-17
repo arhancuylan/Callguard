@@ -125,28 +125,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         if: always() && steps.build.conclusion == 'success'
         run: |
-          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.1.17-preview.apk
-          cp app/build/outputs/bundle/release/app-release.aab CallGuard-1.1.17-preview.aab
-          sha256sum CallGuard-1.1.17-preview.apk > CallGuard-1.1.17-preview.apk.sha256
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.1.17-preview.apk
+          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.1.18-preview.apk
+          cp app/build/outputs/bundle/release/app-release.aab CallGuard-1.1.18-preview.aab
+          sha256sum CallGuard-1.1.18-preview.apk > CallGuard-1.1.18-preview.apk.sha256
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.1.18-preview.apk
           gh release download v1.0.0 --pattern CallGuard-1.0.0.apk --dir previous
           signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           previous_cert=$("$signer" verify --print-certs previous/CallGuard-1.0.0.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
-          current_cert=$("$signer" verify --print-certs CallGuard-1.1.17-preview.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
+          current_cert=$("$signer" verify --print-certs CallGuard-1.1.18-preview.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
           test -n "$previous_cert"
           test "$previous_cert" = "$current_cert"
           echo 'Update signing certificate matches version 1.0.0.' 
       - uses: actions/upload-artifact@v4
         if: always() && steps.build.conclusion == 'success'
         with:
-          name: CallGuard-1.1.17-preview
+          name: CallGuard-1.1.18-preview
           path: |
-            CallGuard-1.1.17-preview.apk
-            CallGuard-1.1.17-preview.apk.sha256
-            CallGuard-1.1.17-preview.aab
+            CallGuard-1.1.18-preview.apk
+            CallGuard-1.1.18-preview.apk.sha256
+            CallGuard-1.1.18-preview.aab
       - name: Publish APK after required checks; call integration can be validated on the phone
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           python -m zipfile -c CallGuard-Play-Preparation.zip distribution/play tools/play-preflight.py
-          gh release create "v1.1.17-preview" CallGuard-1.1.17-preview.apk CallGuard-1.1.17-preview.apk.sha256 CallGuard-1.1.17-preview.aab CallGuard-Play-Preparation.zip --title "CallGuard 1.1.17-preview · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --prerelease --latest=false
+          gh release create "v1.1.18-preview" CallGuard-1.1.18-preview.apk CallGuard-1.1.18-preview.apk.sha256 CallGuard-1.1.18-preview.aab CallGuard-Play-Preparation.zip --title "CallGuard 1.1.18-preview · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --prerelease --latest=false

@@ -1,4 +1,4 @@
-CallGuard 1.1.17-preview · Uygulama içi ADB araç sessizliği
+CallGuard 1.1.18-preview · Uygulama içi ADB araç sessizliği
 
 - Shizuku uygulaması, SDK’sı, sağlayıcısı ve izin isteği kaldırıldı. Ayrı uygulama kurulmaz.
 - Android 11+ kablosuz ADB eşleştirmesi CallGuard içinden yapılır. Geliştirici seçenekleri ve Android’in eşleştirme onayı gereklidir; uygulama bunları kendi kendine açmaz.
