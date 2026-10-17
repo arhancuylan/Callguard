@@ -1,4 +1,4 @@
-CallGuard 1.1.20-preview · Otomatik kurulum kontrolü ve anlaşılır adımlar
+CallGuard 1.1.21-preview · Otomatik kurulum kontrolü ve anlaşılır adımlar
 
 - Araç seç düğmesi artık ADB kurulumu açmak yerine doğrudan eşleşmiş Bluetooth cihazlarını gösterir. Kurulum eksikse seçilen araç korunur ve kurulum sonrası tekrar onayla sessizliği açılır.
 - Kurulum ekranında beş adım, tamamlananlarda yeşil ✓ ve eksik/doğrulanamayanlarda kırmızı ✕ ile gösterilir. Üstte yalnızca sıradaki adımın eylemi bulunur; tamamlanan adımlar otomatik atlanır.
