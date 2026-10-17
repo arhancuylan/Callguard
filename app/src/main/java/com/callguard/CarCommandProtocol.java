@@ -26,6 +26,12 @@ final class CarCommandProtocol {
         }
         if(found==null)throw new IOException("Car helper did not respond");return found;
     }
+    static Integer completed(String output)throws IOException{
+        int newline=output.lastIndexOf('\n');if(newline<0)return null;
+        String complete=output.substring(0,newline+1);
+        if(!complete.startsWith("CGCAR1:")&&!complete.contains("\nCGCAR1:"))return null;
+        return parse(complete);
+    }
     static int port(String raw){int port=Integer.parseInt(raw.trim());if(port<1||port>65535)throw new IllegalArgumentException();return port;}
     private CarCommandProtocol(){}
 }

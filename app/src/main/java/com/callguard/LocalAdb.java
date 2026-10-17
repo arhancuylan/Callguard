@@ -50,8 +50,13 @@ final class LocalAdb extends AbsAdbConnectionManager {
         ScheduledFuture<?> deadline=CLOCK.schedule(()->{try{connection.close();}catch(IOException ignored){}},25000,TimeUnit.MILLISECONDS);
         try(AdbStream stream=openStream("shell:"+command);InputStream input=stream.openInputStream()){
             ByteArrayOutputStream result=new ByteArrayOutputStream();byte[] buffer=new byte[512];int count;
-            while((count=input.read(buffer))!=-1){if(result.size()+count>8192)throw new IOException("Helper response too large");result.write(buffer,0,count);}
-            return CarCommandProtocol.parse(result.toString("UTF-8"));
+            while((count=input.read(buffer))!=-1){
+                if(result.size()+count>8192)throw new IOException("Helper response too large");result.write(buffer,0,count);
+                // ADB stream closure may throw instead of reporting EOF. A complete framed
+                // reply is the result; waiting for process/transport closure is unnecessary.
+                Integer reply=CarCommandProtocol.completed(result.toString("UTF-8"));if(reply!=null)return reply;
+            }
+            throw new IOException("Helper did not respond");
         }catch(Exception ex){authorized=false;throw ex;}finally{deadline.cancel(false);}
     }
     // Do not call AbsAdbConnectionManager.close(): this device identity must survive reconnection.

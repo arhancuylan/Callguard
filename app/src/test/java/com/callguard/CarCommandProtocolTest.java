@@ -27,4 +27,10 @@ public class CarCommandProtocolTest {
         assertEquals(12345,CarCommandProtocol.port("12345"));
         for(String value:new String[]{"0","65536","-1","123;id",""})assertThrows(IllegalArgumentException.class,()->CarCommandProtocol.port(value));
     }
+    @Test public void completedFrameDoesNotDependOnAdbEof()throws Exception{
+        assertNull(CarCommandProtocol.completed("CGCAR1:20"));
+        assertNull(CarCommandProtocol.completed("runtime warning\nCGCAR1:20"));
+        assertEquals(Integer.valueOf(2000),CarCommandProtocol.completed("runtime warning\r\nCGCAR1:2000\r\n"));
+        assertThrows(IOException.class,()->CarCommandProtocol.completed("CGCAR1:ERROR\n"));
+    }
 }
