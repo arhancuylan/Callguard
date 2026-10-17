@@ -1,0 +1,32 @@
+17 Ekim 2026 — Engellenen çağrı bildirimi ve araç Bluetooth incelemesi
+
+Uygulama değişikliği:
+Başarıyla dönen WhatsApp Reddet PendingIntent isteğinden sonra yalnızca aynı çağrının tek bildirimi için cancelNotification(key) istenir. İstek dönüşü çağrının gerçekten kapandığı anlamına gelmez. Anahtar, paket, post zamanı, notification.when, çağrı tipi ve Reddet PendingIntent birlikte karşılaştırılır. Zaman aralığıyla arayan tahmini veya tüm uygulama bildirimlerini silme kullanılmaz. Paylaşılan grup özetleri, mesajlar, değişmiş bildirimler, devam eden/screening çağrıları ve yeni cevapsız çağrı bildirimleri temizlenmez. Android silmeyi reddedebilir. Temizlik hatası reddetme geçmişini değiştirmez. Hiçbir Bluetooth profili değiştirilmez.
+
+İncelenen açık kaynaklar ve bulgular:
+1. AOSP BluetoothInCallService (tam kaynak ve durum eşlemesi):
+https://android.googlesource.com/platform/packages/modules/Bluetooth/+/a5ba99a1c93b7b0fac7dfb4723e5508b545b8f00/android/app/src/com/android/bluetooth/telephony/BluetoothInCallService.java
+getBluetoothCallStateForUpdate / updateHeadsetWithCallState telefonun Telecom çağrılarını HFP durumuna dönüştürür ve phoneStateChanged ile iletir. Bu kodda bağlı çağrı durumu telefonun bildirim kartından okunmaz. Kaynak, kapanış tonu çalarken DISCONNECTED durumunu bir süre tutabilir. Bu, Fiat/Samsung cihazındaki gecikmenin kesin nedenini göstermez; ilgili cihazların sürümü ve HCI kaydı olmadan neden saptanamaz. queryPhoneState/çağrı kontrol girişleri MODIFY_PHONE_STATE ile korunur; normal bir mağaza uygulamasının serbestçe kullanabileceği bir düzeltme noktası değildir.
+
+2. Gadgetbridge NotificationListener.java (handleCallNotification ve onNotificationRemoved):
+https://github.com/Freeyourgadget/Gadgetbridge/blob/master/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/externalevents/NotificationListener.java
+Desteklenen cihazlara uygulama kendi CallSpec.CALL_INCOMING ve CALL_END komutlarını yollar. Bildirimin kaldırılması CALL_END üretimine katkı sağlayabilir. Bu yalnızca Gadgetbridge'in kendi yönettiği cihaz protokolüdür; Fiat'ın orijinal HFP sistemine genel bir CALL_END API'si sağlamaz.
+
+3. SpamBlocker-Extended NotificationListenerService.kt:
+https://github.com/KerballOne/SpamBlocker-Extended
+app/src/main/java/spam/blocker/service/NotificationListenerService.kt
+Engellenmiş bildirim için cancelNotification(sbn.key) kullanır. İncelenen bildirim filtresi yolunda HFP'yi WhatsApp bazında önceden kesen bir mekanizma bulunmadı. Bildirim filtreleme ile çağrı reddetmenin aynı işlem olmadığı korundu.
+
+4. Bluetooth Bouncer UserService:
+https://github.com/harvzor/android-bluetooth-bouncer/blob/master/app/src/main/java/net/harveywilliams/bluetoothbouncer/shizuku/BluetoothBouncerUserService.kt
+Shizuku shell sürecinde gizli setConnectionPolicy/disconnect kullanır; A2DP, Headset ve HID profillerine cihaz bazında erişir. Bu, yalnızca engellenen WhatsApp çağrısının Bluetooth olayını ayıklamak değildir.
+
+5. Clear Mic Router HfpPolicyService:
+https://github.com/shivarya/clear-mic-router/blob/main/app/src/main/java/com/clearmic/shizuku/HfpPolicyService.kt
+Shell uid / BLUETOOTH_PRIVILEGED ve gizli profil API'leriyle HFP/LE Audio çağrı profili politikasını kapatıp geri açar. Bağlı cihazın bütün telefon görüşmelerini etkileyebilir. Bluetooth gelen arama ekranını sıfır gecikmeyle ve yalnızca kara listedeki WhatsApp çağrıları için engellediğini kanıtlamaz. A2DP üzerinden medya ile HFP telefon profili ayrı tutulabilir; telefon görüşmeleri yine araçtan çıkmış olur.
+
+Karar:
+Normal Play kurulumu için doğrulanmış WhatsApp reddetme + dar kapsamlı bildirim temizliği sürdürüldü. Bluetooth'u aç/kapat, sesi genel sustur, sahte IDLE gönder veya profili izinsiz kapat gibi işlemler eklenmedi. Shizuku yöntemi teknik bir deney seçeneğidir; ek kurulum/yetki ve tüm araç görüşmelerine etkisi nedeniyle temel uygulamaya eklenmedi. Bu projelerden kaynak kod kopyalanmadı.
+
+Gecikmeyi gerçekten ayırmak için sonraki cihaz ölçümü:
+Tek bir testte Reddet isteği, arayan telefonun kapanması, araç ekranının kapanması ve Bluetooth HCI HFP çağrı sonu (callsetup/call göstergeleri) zamanlarını karşılaştırmak gerekir. Sonlandırma göstergesi telefondan geç çıkıyorsa telefon/Telecom/WhatsApp hattı; zamanında çıkıp araçta görünüm kalıyorsa araç/firmware hattı araştırılır. Günlükler telefon numarası içerebilir; ham bugreport herkese açık depoya yüklenmemelidir. Fiziksel Fiat 500X üzerinde bu ölçüm henüz yapılmadı.

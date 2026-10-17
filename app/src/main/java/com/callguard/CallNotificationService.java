@@ -8,6 +8,7 @@ import java.util.*;
 /** Invokes only the verified, WhatsApp-owned Decline action. No Telecom or accessibility route. */
 public final class CallNotificationService extends NotificationListenerService {
     private Store store;
+    private final Set<String> cleanupRequested=new HashSet<>();
     static volatile boolean connected;
     private void trace(String value){if(BuildConfig.DEBUG)android.util.Log.d("CallGuardTest",value);}
     @Override public void onListenerConnected(){super.onListenerConnected();connected=true;CallDiagnostics.record(this,"SERVIS_BAGLANDI");trace("listener connected");}
@@ -85,8 +86,38 @@ public final class CallNotificationService extends NotificationListenerService {
         if(!blocked){store.history(caller,number,video,ProtectionState.result("İzin verildi",reason));return;}
         if(recordOnly){store.history(caller,number,video,ProtectionState.result("Yalnızca kaydedildi","Yalnızca kaydet modu · "+reason));return;}
         if(action.actionIntent==null||!owner.equals(action.actionIntent.getCreatorPackage())){store.history(caller,number,video,ProtectionState.result("Reddetme eylemi doğrulanamadı",reason));return;}
-        try{action.actionIntent.send();CallDiagnostics.record(this,"REDDET_ISTEGI_GONDERILDI");store.history(caller,number,video,ProtectionState.result("Reddetme isteği gönderildi",reason));}
+        try{action.actionIntent.send();CallDiagnostics.record(this,"REDDET_ISTEGI_GONDERILDI");store.history(caller,number,video,ProtectionState.result("Reddetme isteği gönderildi",reason));cleanupRejected(sbn,action.actionIntent);}
         catch(PendingIntent.CanceledException|SecurityException ex){CallDiagnostics.record(this,"REDDET_ISTEGI_GONDERILEMEDI");store.history(caller,number,video,ProtectionState.result("Reddetme isteği gönderilemedi",reason));}
+    }
+    private RejectedNotification snapshot(StatusBarNotification sbn,PendingIntent expected){
+        Notification n=sbn.getNotification();if(n==null)return null;
+        Bundle extras=n.extras==null?Bundle.EMPTY:n.extras;
+        PendingIntent matching=null;
+        if(expected.equals(pending(extras,"android.declineIntent")))matching=expected;
+        if(n.actions!=null)for(Notification.Action a:n.actions)if(a!=null&&expected.equals(a.actionIntent))matching=expected;
+        return new RejectedNotification(sbn.getKey(),sbn.getPackageName(),n.category,sbn.getPostTime(),n.when,
+            extras.getInt("android.callType",0),(n.flags&Notification.FLAG_GROUP_SUMMARY)!=0,matching);
+    }
+    private void cleanupRejected(StatusBarNotification original,PendingIntent decline){
+        // Reaching here means our rejection action returned, NOT that call termination was confirmed.
+        // No delayed task: a reused notification ID must never erase a later call or message.
+        if(!connected)return;
+        try{
+            RejectedNotification expected=snapshot(original,decline);
+            if(expected==null||!expected.matches(expected)){CallDiagnostics.record(this,"BILDIRIM_TEMIZLIGI_ATLANDI: ortak_ozet_veya_belirsiz");return;}
+            StatusBarNotification[] active=getActiveNotifications(new String[]{original.getKey()});
+            if(active==null)return;
+            for(StatusBarNotification current:active)if(current!=null&&expected.matches(snapshot(current,decline))){
+                if(cleanupRequested.size()>=200)cleanupRequested.clear();
+                cleanupRequested.add(original.getKey());
+                cancelNotification(original.getKey());
+                CallDiagnostics.record(this,"ENGELLENEN_BILDIRIMI_SILME_ISTEGI: kapanma_onayi_degildir");
+                return;
+            }
+        }catch(SecurityException|IllegalStateException|IllegalArgumentException ex){
+            cleanupRequested.remove(original.getKey());
+            CallDiagnostics.record(this,"ENGELLENEN_BILDIRIMI_SILINEMEDI");
+        }
     }
     private static boolean owned(PendingIntent intent,String owner){return intent!=null&&owner.equals(intent.getCreatorPackage());}
     private static PendingIntent pending(Bundle extras,String key){Object value=extras.get(key);return value instanceof PendingIntent?(PendingIntent)value:null;}
@@ -99,5 +130,9 @@ public final class CallNotificationService extends NotificationListenerService {
         Object lines=extras.get(Notification.EXTRA_TEXT_LINES);if(lines instanceof CharSequence[])for(CharSequence line:(CharSequence[])lines)if(line!=null)text.append(line).append(' ');
         return text.toString();
     }
-    @Override public void onNotificationRemoved(StatusBarNotification sbn){if(sbn!=null)processed.remove(sbn.getKey());}
+    @Override public void onNotificationRemoved(StatusBarNotification sbn){if(sbn!=null){processed.remove(sbn.getKey());cleanupRequested.remove(sbn.getKey());}}
+    @Override public void onNotificationRemoved(StatusBarNotification sbn,RankingMap ranking,int reason){
+        if(sbn!=null&&cleanupRequested.remove(sbn.getKey()))CallDiagnostics.record(this,"TEMIZLIK_SONRASI_BILDIRIM_KALDIRILDI: neden="+reason+"; cagri_kapanma_onayi_degildir");
+        super.onNotificationRemoved(sbn,ranking,reason);
+    }
 }
