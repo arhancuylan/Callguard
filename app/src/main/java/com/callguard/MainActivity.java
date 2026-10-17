@@ -26,14 +26,16 @@ public final class MainActivity extends Activity {
     private String driveAction="",driveAccount="";
     private ProBilling billing;
     private Store store; private LinearLayout root,body,nav; private ScrollView scroll;
-    private final int[] tabScrollY=new int[4];
+    private final int[] tabScrollY=new int[5];
+    private boolean backupPage=false;
+    private Object backupBackCallback;
     private int tab=0; private boolean white=true; private boolean rendering=false;
     private String search=""; private LinearLayout peopleRows;
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final BroadcastReceiver refresh=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(!rendering)render();}};
     @Override public void onCreate(Bundle state){
         super.onCreate(state);store=new Store(this);
-        if(state!=null){tab=state.getInt("tab");white=state.getBoolean("white",true);search=state.getString("search","");driveAction=state.getString("driveAction","");driveAccount=state.getString("driveAccount","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
+        if(state!=null){tab=state.getInt("tab");white=state.getBoolean("white",true);search=state.getString("search","");backupPage=state.getBoolean("backupPage",false);driveAction=state.getString("driveAction","");driveAccount=state.getString("driveAccount","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
         if(Build.VERSION.SDK_INT>=33)registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"),Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"));
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
@@ -42,8 +44,8 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onResume(){super.onResume();if(store!=null)render();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
     @Override protected void onPause(){statusHandler.removeCallbacks(statusTick);super.onPause();}
-    @Override protected void onSaveInstanceState(Bundle out){out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
-    @Override protected void onDestroy(){unregisterReceiver(refresh);if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
+    @Override protected void onSaveInstanceState(Bundle out){out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
+    @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private GradientDrawable bg(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
     private GradientDrawable outline(int color){GradientDrawable d=bg(color,14);d.setStroke(dp(1),BORDER);return d;}
@@ -62,31 +64,32 @@ public final class MainActivity extends Activity {
         root=column();root.setBackgroundColor(BG);
         root.setOnApplyWindowInsetsListener((view,insets)->{view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});
         setContentView(root);root.requestApplyInsets();
-        final int renderedTab=tab;
+        final int renderedTab=tab==3&&backupPage?4:tab;
         final int restoreY=tabScrollY[renderedTab];
         final boolean[] restoring={true};
         scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);
         final ScrollView renderedScroll=scroll;
         renderedScroll.setOnScrollChangeListener((view,x,y,oldX,oldY)->{if(!restoring[0]&&scroll==renderedScroll)tabScrollY[renderedTab]=y;});
         body=column();body.setPadding(dp(22),dp(20),dp(22),dp(18));scroll.addView(body,new ScrollView.LayoutParams(-1,-2));root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        if(tab==0)home();else if(tab==1)people();else if(tab==2)history();else settings();
+        if(tab==0)home();else if(tab==1)people();else if(tab==2)history();else if(backupPage)backupSettings();else settings();
         nav=row();nav.setPadding(dp(8),dp(9),dp(8),dp(10));nav.setBackgroundColor(Color.WHITE);
         String[] names={"Koruma","Kişiler","Geçmiş","Ayarlar"};String[] icons={"shield","people","clock","settings"};
-        for(int j=0;j<4;j++){final int index=j;LinearLayout item=column();item.setGravity(Gravity.CENTER);item.setPadding(dp(2),dp(2),dp(2),dp(2));item.addView(icon(icons[j],j==tab?GREEN:MUTED,23));gap(item,5);TextView label=text(names[j],12,j==tab?GREEN:MUTED,j==tab);label.setGravity(Gravity.CENTER);item.addView(label,new LinearLayout.LayoutParams(-1,-2));item.setContentDescription(names[j]+" sekmesi");item.setFocusable(true);item.setOnClickListener(v->{tab=index;render();});nav.addView(item,new LinearLayout.LayoutParams(0,dp(56),1));}
+        for(int j=0;j<4;j++){final int index=j;LinearLayout item=column();item.setGravity(Gravity.CENTER);item.setPadding(dp(2),dp(2),dp(2),dp(2));item.addView(icon(icons[j],j==tab?GREEN:MUTED,23));gap(item,5);TextView label=text(names[j],12,j==tab?GREEN:MUTED,j==tab);label.setGravity(Gravity.CENTER);item.addView(label,new LinearLayout.LayoutParams(-1,-2));item.setContentDescription(names[j]+" sekmesi");item.setFocusable(true);item.setOnClickListener(v->{backupPage=false;tab=index;render();});nav.addView(item,new LinearLayout.LayoutParams(0,dp(56),1));}
         root.addView(nav,new LinearLayout.LayoutParams(-1,-2));
         // Restore only this render's view, after measuring its new content. Repeated cloud
         // broadcasts must not replace the saved position with a fresh view's initial zero.
         body.setFocusableInTouchMode(true);body.requestFocus();
         renderedScroll.post(()->{if(scroll!=renderedScroll)return;renderedScroll.scrollTo(0,restoreY);restoring[0]=false;tabScrollY[renderedTab]=renderedScroll.getScrollY();});
-        if(tab==0)displayedProtection=protectionSnapshot();rendering=false;
+        if(tab==0)displayedProtection=protectionSnapshot();syncBackupBack();rendering=false;
     }
     private void home(){
         LinearLayout brand=row();brand.addView(icon("shield",GREEN,31));TextView word=text("CallGuard",22,INK,true);LinearLayout.LayoutParams wp=new LinearLayout.LayoutParams(0,-2,1);wp.leftMargin=dp(9);brand.addView(word,wp);
-        TextView menu=text("⋮",26,MUTED,true);menu.setGravity(Gravity.CENTER);menu.setContentDescription("Diğer seçenekler");menu.setOnClickListener(v->{PopupMenu p=new PopupMenu(this,menu);p.getMenu().add("Ayarlar").setOnMenuItemClickListener(i->{tab=3;render();return true;});p.getMenu().add("Program hakkında").setOnMenuItemClickListener(i->{about();return true;});p.show();});brand.addView(menu,new LinearLayout.LayoutParams(dp(48),dp(48)));body.addView(brand);gap(body,20);
+        TextView menu=text("⋮",26,MUTED,true);menu.setGravity(Gravity.CENTER);menu.setContentDescription("Diğer seçenekler");menu.setOnClickListener(v->{PopupMenu p=new PopupMenu(this,menu);p.getMenu().add("Ayarlar").setOnMenuItemClickListener(i->{backupPage=false;tab=3;render();return true;});p.getMenu().add("Program hakkında").setOnMenuItemClickListener(i->{about();return true;});p.show();});brand.addView(menu,new LinearLayout.LayoutParams(dp(48),dp(48)));body.addView(brand);gap(body,20);
         heading("Huzurla devam et.","WhatsApp aramalarını yönet.");
-        LinearLayout protect=card();GradientDrawable grad=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{GREEN,Color.rgb(2,80,65)});grad.setCornerRadius(dp(18));protect.setBackground(grad);
-        LinearLayout pr=row();pr.addView(icon("shield",Color.WHITE,60));LinearLayout lines=column();TextView status=text(ProtectionState.title(store.enabled(),access(),LicenseManager.allowed(this),store.paused(),store.scheduleActive(),store.recordOnly(),CallNotificationService.connected),18,Color.WHITE,true);lines.addView(status);gap(lines,5);lines.addView(text(protectionDetail(),12,Color.rgb(209,238,220),false));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.leftMargin=dp(12);pr.addView(lines,lp);
-        Switch toggle=new Switch(this);toggle.setContentDescription("Koruma anahtarı");toggle.setChecked(store.enabled());toggle.setThumbTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));toggle.setTrackTintList(android.content.res.ColorStateList.valueOf(Color.rgb(139,210,153)));toggle.setOnCheckedChangeListener((b,on)->{if(on&&!access()){toggle.setChecked(false);permissionExplanation();return;}if(on&&BuildConfig.COMMERCIAL_ENABLED&&!LicenseManager.allowed(this)){toggle.setChecked(false);beginTrial();return;}store.setting("enabled",on);});pr.addView(toggle);protect.addView(pr);
+        boolean protecting=store.enabled()&&access()&&LicenseManager.allowed(this)&&!store.paused()&&store.scheduleActive()&&!store.recordOnly()&&CallNotificationService.connected;
+        LinearLayout protect=card();GradientDrawable grad=new GradientDrawable(GradientDrawable.Orientation.TL_BR,protecting?new int[]{GREEN,Color.rgb(2,80,65)}:new int[]{Color.rgb(180,35,24),Color.rgb(127,29,29)});grad.setCornerRadius(dp(18));protect.setBackground(grad);
+        LinearLayout pr=row();pr.addView(icon(protecting?"shield":"warning",Color.WHITE,60));LinearLayout lines=column();TextView status=text(!store.enabled()?"Koruma kapalı":ProtectionState.title(store.enabled(),access(),LicenseManager.allowed(this),store.paused(),store.scheduleActive(),store.recordOnly(),CallNotificationService.connected),18,Color.WHITE,true);lines.addView(status);gap(lines,5);lines.addView(text(protectionDetail(),12,protecting?Color.rgb(209,238,220):Color.rgb(255,226,222),false));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.leftMargin=dp(12);pr.addView(lines,lp);
+        Switch toggle=new Switch(this);toggle.setContentDescription("Koruma anahtarı");toggle.setChecked(store.enabled());toggle.setThumbTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));toggle.setTrackTintList(android.content.res.ColorStateList.valueOf(protecting?Color.rgb(139,210,153):Color.rgb(245,158,150)));toggle.setOnCheckedChangeListener((b,on)->{if(on&&!access()){toggle.setChecked(false);permissionExplanation();return;}if(on&&BuildConfig.COMMERCIAL_ENABLED&&!LicenseManager.allowed(this)){toggle.setChecked(false);beginTrial();return;}store.setting("enabled",on);});pr.addView(toggle);protect.addView(pr);
         if(!access()){TextView permission=button("Bildirim erişimini aç",false,this::permissionExplanation);permission.setTextColor(Color.WHITE);gap(protect,10);protect.addView(permission);}
         if(store.enabled()){gap(protect,10);TextView pause=button(store.paused()?"Şimdi devam et":"Korumayı duraklat",false,()->{if(store.paused()){store.pauseUntil(0);render();}else pauseChoices();});pause.setTextColor(Color.WHITE);protect.addView(pause);}
         LinearLayout accessCard=card();accessCard.addView(text(LicenseManager.status(this),14,GREEN,true));gap(accessCard,6);accessCard.addView(text(store.scheduleActive()?"Seçili profil: "+profileName(store.profile()):"Zamanlama dışında · otomatik koruma bekliyor",12,MUTED,false));
@@ -101,9 +104,9 @@ public final class MainActivity extends Activity {
     }
     private String protectionSnapshot(){return ProtectionState.title(store.enabled(),access(),LicenseManager.allowed(this),store.paused(),store.scheduleActive(),store.recordOnly(),CallNotificationService.connected)+":"+store.pauseUntil();}
     private String protectionDetail(){
+        if(!store.enabled())return "Otomatik reddetme kapalı. Başlamak için koruma anahtarını aç.";
         if(!access())return "Aramaları yönetmek için bildirim erişimini aç.";
         if(!LicenseManager.allowed(this))return LicenseManager.status(this);
-        if(!store.enabled())return "Başlamak için koruma anahtarını aç.";
         if(store.paused())return "Devam: "+new SimpleDateFormat("d MMM HH:mm",new Locale("tr")).format(new Date(store.pauseUntil()));
         if(!store.scheduleActive())return "Seçili profilin gün ve saatleri dışında.";
         if(!CallNotificationService.connected)return "İzin açık; servis henüz bağlanmadı. İzni yönet ekranından kontrol et.";
@@ -214,14 +217,29 @@ public final class MainActivity extends Activity {
     }
     private void historyAction(String caller,String number,String result){boolean destinationWhite=!ProtectionState.permitted(result);String label=destinationWhite?"Beyaz listeye ekle":"Kara listeye ekle";new AlertDialog.Builder(this).setTitle(caller).setItems(new String[]{label},(d,w)->{if(number.isEmpty())manual(caller.equals("Bilinmeyen numara")?"":caller,"",destinationWhite);else new AlertDialog.Builder(this).setTitle(label+"?").setMessage(caller+"\n"+number).setNegativeButton("Vazgeç",null).setPositiveButton("Ekle",(dialog,which)->{store.add(caller,number,destinationWhite);toast("Kişi "+(destinationWhite?"beyaz":"kara")+" listeye eklendi.");}).show();}).setNegativeButton("Kapat",null).show();}
     private void settings(){heading("Her şey kontrolünde","");LinearLayout permission=card();LinearLayout r=row();r.addView(text("Bildirim erişimi",17,INK,true),new LinearLayout.LayoutParams(0,-2,1));TextView badge=text(access()?"● Etkin":"○ Kapalı",12,access()?GREEN:MUTED,true);badge.setPadding(dp(9),dp(5),dp(9),dp(5));badge.setBackground(bg(Color.rgb(222,243,224),20));r.addView(badge);permission.addView(r);gap(permission,7);permission.addView(text("Uygulamanın WhatsApp aramalarını yönetebilmesi için gereklidir.",13,MUTED,false));gap(permission,10);permission.addView(button("İzni yönet",false,this::permissionExplanation));
-        scheduleCard();
-        accountCard();
-        driveCard();
-        diagnosticsCard();
         LinearLayout type=card();type.addView(text("Arama türü",17,INK,true));gap(type,12);segmented(type,new String[]{"Sesli","Görüntülü","Her ikisi"},store.effectiveMedia().ordinal(),i->store.setting("media",Rules.Media.values()[i].name()));gap(type,8);type.addView(text("Kurallar seçtiğin arama türüne uygulanır.",12,MUTED,false));
         LinearLayout action=card();action.addView(text("İşlem modu",17,INK,true));gap(action,8);radio(action,"Otomatik reddet",!store.recordOnly(),()->store.setting("recordOnly",false));radio(action,"Yalnızca kaydet",store.recordOnly(),()->store.setting("recordOnly",true));gap(action,8);action.addView(text("Yalnızca kaydet modu çağrıyı susturmaz.",12,MUTED,false));
+        scheduleCard();
+        LinearLayout backup=card();backup.addView(button("Yedekleme ve geri yükleme    ›",true,()->{backupPage=true;render();}));gap(backup,7);backup.addView(text("Hesap · CallGuard bulutu · Google Drive",12,MUTED,false));
+        diagnosticsCard();
         LinearLayout about=card();about.addView(text("Program hakkında",17,INK,true));gap(about,16);TextView sig=text("Call Guard by AC",25,GREEN,true);sig.setGravity(Gravity.CENTER);about.addView(sig);gap(about,4);TextView version=text("Sürüm "+BuildConfig.VERSION_NAME,12,MUTED,false);version.setGravity(Gravity.CENTER);about.addView(version);gap(about,12);TextView disclaimer=text("WhatsApp veya Meta ile bağlantılı değildir.",11,MUTED,false);disclaimer.setGravity(Gravity.CENTER);about.addView(disclaimer);
     }
+    private void backupSettings(){
+        body.addView(button("‹  Ayarlara dön",false,this::closeBackupPage));gap(body,18);
+        heading("Yedekleme ve geri yükleme","Hesabını ve yedeklerini buradan yönet.");
+        accountCard();driveCard();
+    }
+    private void closeBackupPage(){backupPage=false;render();}
+    private void syncBackupBack(){
+        if(Build.VERSION.SDK_INT<33)return;
+        if(tab==3&&backupPage&&backupBackCallback==null){
+            android.window.OnBackInvokedCallback callback=this::closeBackupPage;
+            backupBackCallback=callback;getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,callback);
+        }else if((tab!=3||!backupPage)&&backupBackCallback!=null){
+            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);backupBackCallback=null;
+        }
+    }
+    @Override public void onBackPressed(){if(tab==3&&backupPage)closeBackupPage();else super.onBackPressed();}
     private void runCloud(String title,java.util.concurrent.Callable<org.json.JSONObject> action,java.util.function.Consumer<org.json.JSONObject> done){
         ProgressDialog progress=ProgressDialog.show(this,title,"Lütfen bekle…",true,false);worker.execute(()->{try{org.json.JSONObject result=action.call();runOnUiThread(()->{if(isFinishing()||isDestroyed())return;progress.dismiss();done.accept(result);});}catch(Exception ex){runOnUiThread(()->{if(isFinishing()||isDestroyed())return;progress.dismiss();toast(ex instanceof java.io.IOException?ex.getMessage():"İşlem tamamlanamadı. Yeniden dene.");});}});
     }
@@ -364,6 +382,7 @@ public final class MainActivity extends Activity {
         Icon(String kind,int color){super(MainActivity.this);this.kind=kind;this.color=color;setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);}
         @Override protected void onDraw(Canvas c){super.onDraw(c);c.save();c.scale(getWidth()/32f,getHeight()/32f);p.setColor(color);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.2f);p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeJoin(Paint.Join.ROUND);
             if(kind.equals("shield")){Path s=new Path();s.moveTo(16,3);s.lineTo(28,8);s.lineTo(26,20);s.quadTo(23,27,16,30);s.quadTo(9,27,6,20);s.lineTo(4,8);s.close();c.drawPath(s,p);c.drawLine(10,16,14,20,p);c.drawLine(14,20,22,12,p);}
+            else if(kind.equals("warning")){Path triangle=new Path();triangle.moveTo(16,3);triangle.lineTo(30,28);triangle.lineTo(2,28);triangle.close();c.drawPath(triangle,p);c.drawLine(16,12,16,19,p);p.setStyle(Paint.Style.FILL);c.drawCircle(16,24,1.4f,p);}
             else if(kind.equals("search")){c.drawCircle(13,13,8,p);c.drawLine(19,19,28,28,p);}
             else if(kind.equals("clock")){c.drawCircle(16,16,12,p);c.drawLine(16,8,16,16,p);c.drawLine(16,16,22,19,p);}
             else if(kind.equals("people")){c.drawCircle(12,9,4,p);c.drawCircle(23,10,3,p);c.drawArc(4,17,20,31,180,180,false,p);c.drawArc(19,18,29,29,220,140,false,p);c.drawLine(4,24,4,28,p);c.drawLine(4,28,20,28,p);c.drawLine(20,24,20,28,p);}
