@@ -62,10 +62,13 @@ public final class Store extends SQLiteOpenHelper {
         getWritableDatabase().execSQL("DELETE FROM history WHERE _id NOT IN (SELECT _id FROM history ORDER BY _id DESC LIMIT 500)");changed();
     }
     public Cursor history() {return getReadableDatabase().query("history",null,null,null,null,null,"at DESC, _id DESC");}
-    public int today() {
-        Calendar cal=Calendar.getInstance();cal.set(Calendar.HOUR_OF_DAY,0);cal.set(Calendar.MINUTE,0);cal.set(Calendar.SECOND,0);cal.set(Calendar.MILLISECOND,0);
-        try(Cursor c=getReadableDatabase().rawQuery("SELECT count(*) FROM history WHERE at>=? AND result LIKE ?",new String[]{String.valueOf(cal.getTimeInMillis()),"Reddetme isteği gönderildi%"})){c.moveToFirst();return c.getInt(0);}
+    private String[] todayRejectedArgs(){
+        Calendar start=Calendar.getInstance();start.set(Calendar.HOUR_OF_DAY,0);start.set(Calendar.MINUTE,0);start.set(Calendar.SECOND,0);start.set(Calendar.MILLISECOND,0);
+        Calendar end=(Calendar)start.clone();end.add(Calendar.DATE,1);
+        return new String[]{String.valueOf(start.getTimeInMillis()),String.valueOf(end.getTimeInMillis()),"Reddetme isteği gönderildi%"};
     }
+    public Cursor todayRejected(){return getReadableDatabase().query("history",null,"at>=? AND at<? AND result LIKE ?",todayRejectedArgs(),null,null,"at DESC, _id DESC");}
+    public int today(){try(Cursor c=getReadableDatabase().rawQuery("SELECT count(*) FROM history WHERE at>=? AND at<? AND result LIKE ?",todayRejectedArgs())){c.moveToFirst();return c.getInt(0);}}
     public void clearHistory(){getWritableDatabase().delete("history",null,null);changed();}
     private void changed(){CloudSync.dirty(context);context.sendBroadcast(new Intent(context.getPackageName()+".CHANGED").setPackage(context.getPackageName()));}
 }
