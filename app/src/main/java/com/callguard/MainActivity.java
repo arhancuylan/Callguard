@@ -26,6 +26,7 @@ public final class MainActivity extends Activity {
     private ProBilling billing;
     private CarSilence carSilence;
     private AdbGuide adbGuide;
+    private BluetoothDevicesDialog bluetoothDevices;
     private String pendingCarAddress="",pendingCarName="";
     private Store store; private LinearLayout root,body,nav; private ScrollView scroll;
     private final int[] tabScrollY=new int[5];
@@ -37,7 +38,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final BroadcastReceiver refresh=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(!rendering)render();}};
     @Override public void onCreate(Bundle state){
-        super.onCreate(state);store=new Store(this);carSilence=new CarSilence(this,()->{if(!isFinishing()&&!isDestroyed()){render();if(adbGuide!=null)adbGuide.refresh();}},this::toast);
+        super.onCreate(state);store=new Store(this);carSilence=new CarSilence(this,()->{if(!isFinishing()&&!isDestroyed()){render();if(adbGuide!=null)adbGuide.refresh();if(bluetoothDevices!=null)bluetoothDevices.refresh();}},this::toast);
         if(state!=null){pendingCarAddress=state.getString("pendingCarAddress","");pendingCarName=state.getString("pendingCarName","");tab=state.getInt("tab");historyTodayOnly=state.getBoolean("historyTodayOnly",false);white=state.getBoolean("white",true);search=state.getString("search","");backupPage=state.getBoolean("backupPage",false);driveAction=state.getString("driveAction","");driveAccount=state.getString("driveAccount","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
         if(Build.VERSION.SDK_INT>=33)registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"),Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"));
@@ -45,10 +46,10 @@ public final class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         render();if(state!=null&&state.getBoolean("adbGuideOpen",false))root.post(this::carSilenceDetails);
     }
-    @Override protected void onResume(){super.onResume();BackgroundProtection.reconnect(this);if(store!=null)render();if(adbGuide!=null)adbGuide.resume();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
+    @Override protected void onResume(){super.onResume();BackgroundProtection.reconnect(this);if(store!=null)render();if(adbGuide!=null)adbGuide.resume();if(bluetoothDevices!=null)bluetoothDevices.resume();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
     @Override protected void onPause(){if(adbGuide!=null)adbGuide.pause();statusHandler.removeCallbacks(statusTick);super.onPause();}
     @Override protected void onSaveInstanceState(Bundle out){out.putString("pendingCarAddress",pendingCarAddress);out.putString("pendingCarName",pendingCarName);out.putBoolean("historyTodayOnly",historyTodayOnly);out.putBoolean("adbGuideOpen",adbGuide!=null&&adbGuide.showing());out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
-    @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(adbGuide!=null)adbGuide.close();if(carSilence!=null)carSilence.close();if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
+    @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(adbGuide!=null)adbGuide.close();if(bluetoothDevices!=null)bluetoothDevices.close();if(carSilence!=null)carSilence.close();if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private GradientDrawable bg(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
     private GradientDrawable outline(int color){GradientDrawable d=bg(color,14);d.setStroke(dp(1),BORDER);return d;}
@@ -153,7 +154,7 @@ public final class MainActivity extends Activity {
     private void manual(){manual("","",white);}
     private void manual(String preName,String preNumber,boolean destinationWhite){LinearLayout form=column();form.setPadding(dp(24),dp(8),dp(24),dp(8));EditText name=input("WhatsApp'ta görünen ad");EditText number=input("Telefon numarası (+90…)");number.setInputType(android.text.InputType.TYPE_CLASS_PHONE);name.setText(preName);number.setText(preNumber);form.addView(name);gap(form,12);form.addView(number);gap(form,8);form.addView(text("Türkiye numaraları 05… biçiminde de yazılabilir. Diğer ülkeler için +ülke kodu kullan.",12,MUTED,false));AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Kişi ekle").setView(form).setNegativeButton("Vazgeç",null).setPositiveButton("Kaydet",null).create();dialog.setOnShowListener(d->dialog.getButton(-1).setOnClickListener(v->{try{store.add(name.getText().toString(),number.getText().toString(),destinationWhite);dialog.dismiss();render();}catch(IllegalArgumentException ex){number.setError(ex.getMessage());}}));dialog.show();}
     private void requestContacts(){if(checkSelfPermission(Manifest.permission.READ_CONTACTS)==PackageManager.PERMISSION_GRANTED)pickContacts();else new AlertDialog.Builder(this).setTitle("Rehberden kişi seç").setMessage("Kişi seçebilmek için rehber erişimi gerekir. Seçtiğin ad ve numara cihazda saklanır; istersen CallGuard hesabına yedeklenir. Rehberin tamamı yüklenmez.").setNegativeButton("Vazgeç",null).setPositiveButton("Devam",(d,w)->requestPermissions(new String[]{Manifest.permission.READ_CONTACTS},40)).show();}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);if(request==44){if(results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)startNotificationPairing();else toast("Bildirimden kod girebilmek için bildirim izni gerekli.");return;}if(request==43){if(results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)chooseSilentCar();else new AlertDialog.Builder(this).setTitle("Bluetooth izni verilmedi").setMessage("Araç listesini açmak için Yakındaki cihazlar iznini uygulama ayarlarından verebilirsin.").setNegativeButton("Kapat",null).setPositiveButton("Uygulama ayarları",(d,w)->startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName())))).show();return;}if(request==40){if(results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)pickContacts();else new AlertDialog.Builder(this).setTitle("Rehber izni verilmedi").setMessage("Elle numara ekleyebilir veya uygulama ayarlarından rehber iznini açabilirsin.").setNegativeButton("Kapat",null).setPositiveButton("Uygulama ayarları",(d,w)->startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName())))).show();}}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);if(request==44){if(results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)startNotificationPairing();else toast("Bildirimden kod girebilmek için bildirim izni gerekli.");return;}if(request==43){if(results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)chooseSilentCar();else new AlertDialog.Builder(this).setTitle("Bluetooth izni verilmedi").setMessage("Cihaz listesini açmak için Yakındaki cihazlar iznini uygulama ayarlarından verebilirsin.").setNegativeButton("Kapat",null).setPositiveButton("Uygulama ayarları",(d,w)->startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName())))).show();return;}if(request==40){if(results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)pickContacts();else new AlertDialog.Builder(this).setTitle("Rehber izni verilmedi").setMessage("Elle numara ekleyebilir veya uygulama ayarlarından rehber iznini açabilirsin.").setNegativeButton("Kapat",null).setPositiveButton("Uygulama ayarları",(d,w)->startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName())))).show();}}
     private void pickContacts(){ProgressDialog loading=ProgressDialog.show(this,"Rehber","Kişiler yükleniyor…",true,false);worker.execute(()->{ArrayList<String[]> values=new ArrayList<>();String failure=null;
         try(Cursor c=getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,new String[]{ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,ContactsContract.CommonDataKinds.Phone.NUMBER,ContactsContract.CommonDataKinds.Phone.CONTACT_ID,ContactsContract.CommonDataKinds.Phone.TYPE,ContactsContract.CommonDataKinds.Phone.LABEL},null,null,ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME+" COLLATE LOCALIZED ASC")){
             if(c!=null)while(c.moveToNext()){String number=Rules.number(c.getString(1));String name=c.getString(0);if(!number.isEmpty())values.add(new String[]{name==null||name.trim().isEmpty()?number:name,number,c.getString(2),ContactsContract.CommonDataKinds.Phone.getTypeLabel(getResources(),c.getInt(3),c.getString(4)).toString()});}
@@ -246,36 +247,42 @@ public final class MainActivity extends Activity {
         }catch(java.io.IOException ex){toast("Lisans metni açılamadı.");}
     }
     private void carSilenceCard(){
-        LinearLayout card=card();card.addView(text("Araç sessizliği · CallGuard ADB",17,INK,true));gap(card,8);
+        LinearLayout card=card();card.addView(text("Bluetooth görüşme sessizliği",17,INK,true));gap(card,8);
         card.addView(text(carSilence.status(),13,MUTED,false));gap(card,8);
-        card.addView(text("Seçtiğin aracın bütün Bluetooth görüşmelerini etkiler; beyaz liste istisnası yoktur. Telefonun kendisinde çağrı devam edebilir. WhatsApp koruma anahtarından bağımsızdır.",12,MUTED,false));gap(card,12);
-        card.addView(button(carSilence.saved()?"Kapat ve önceki ayarı geri yükle":"Araç seç ve sessizliği aç",carSilence.saved(),()->{if(carSilence.saved())carSilence.restore();else chooseSilentCar();}));gap(card,8);
-        card.addView(button("Kurulum ve durum",false,this::carSilenceDetails));
+        card.addView(text("Araç, kulaklık ve görüşme destekli cihazlarını ayrı yönet. Seçilen cihazın bütün görüşmelerini etkiler; müzik profili değişmez. Saat ekranındaki bildirimler devam edebilir.",12,MUTED,false));gap(card,12);
+        card.addView(button("Cihazlarımı yönet",true,this::manageBluetoothDevices));gap(card,8);
+        card.addView(button("ADB kurulum ve durum",false,this::carSilenceDetails));
+    }
+    private void manageBluetoothDevices(){
+        if(bluetoothDevices==null)bluetoothDevices=new BluetoothDevicesDialog(this,carSilence,this::chooseSilentCar,this::carSilenceDetails,this::confirmSilentCar);
+        bluetoothDevices.show();
     }
     private void chooseSilentCar(){
         if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED){
-            new AlertDialog.Builder(this).setTitle("Eşleşmiş aracını listele").setMessage("Telefonla önceden eşleştirdiğin Bluetooth cihazlarını göstermek için Yakındaki cihazlar izni gerekir. Yeni cihaz taranmaz, konum izni istenmez; cihaz listesi buluta gönderilmez.").setNegativeButton("Vazgeç",null).setPositiveButton("İzin ver",(d,w)->requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},43)).show();return;
+            new AlertDialog.Builder(this).setTitle("Eşleşmiş cihazlarını listele").setMessage("Telefonla önceden eşleştirdiğin Bluetooth cihazlarını göstermek için Yakındaki cihazlar izni gerekir. Yeni cihaz taranmaz, konum izni istenmez; cihaz listesi buluta gönderilmez.").setNegativeButton("Vazgeç",null).setPositiveButton("İzin ver",(d,w)->requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},43)).show();return;
         }
         carSilence.list(devices->{
             if(isFinishing()||isDestroyed())return;
-            if(devices.length()==0){toast("Eşleşmiş cihaz yok. Önce telefonun Bluetooth ayarlarından aracını eşleştir.");return;}
+            if(devices.length()==0){toast("Eşleşmiş cihaz yok. Önce telefonun Bluetooth ayarlarından cihazını eşleştir.");return;}
             String[] labels=new String[devices.length()];
             for(int i=0;i<labels.length;i++){org.json.JSONObject device=devices.optJSONObject(i);labels[i]=device.optString("name")+" · "+device.optString("address")+(device.optInt("state")==2?" · görüşme bağlantısı var":"");}
-            new AlertDialog.Builder(this).setTitle("Yalnızca aracını seç").setItems(labels,(d,index)->{
+            new AlertDialog.Builder(this).setTitle("Yönetmek istediğin cihazı seç").setItems(labels,(d,index)->{
                 org.json.JSONObject device=devices.optJSONObject(index);String address=device.optString("address"),name=device.optString("name");
                 confirmSilentCar(address,name);
             }).setNegativeButton("Vazgeç",null).show();
         });
     }
     private void continueSelectedCar(){
-        if(!pendingCarAddress.isEmpty())confirmSilentCar(pendingCarAddress,pendingCarName);else chooseSilentCar();
+        if(!pendingCarAddress.isEmpty())confirmSilentCar(pendingCarAddress,pendingCarName);else manageBluetoothDevices();
     }
     private void confirmSilentCar(String address,String name){
+        if(carSilence.hasRecovery(address)){manageBluetoothDevices();toast("Bu cihazın sessizlik / geri yükleme kaydı var. Cihazlarım ekranından yönetebilirsin.");return;}
+        if(!carSilence.remember(address,name))return;
         if(!CarSilence.ready()){
             pendingCarAddress=address;pendingCarName=name;
-            new AlertDialog.Builder(this).setTitle("Aracın seçildi").setMessage(name+"\nSessizliği açmak için bir defalık ADB kurulumunu tamamla. Seçimin bu ekranda korunur; ayar henüz değiştirilmedi.").setNegativeButton("Daha sonra",null).setPositiveButton("Kurulumu tamamla",(d,w)->carSilenceDetails()).show();return;
+            new AlertDialog.Builder(this).setTitle("Cihazın kaydedildi").setMessage(name+"\nSessizliği açmak için bir defalık ADB kurulumunu tamamla. Yapılandırması bu telefonda hatırlanır; görüşme ayarı henüz değiştirilmedi.").setNegativeButton("Daha sonra",null).setPositiveButton("Kurulumu tamamla",(d,w)->carSilenceDetails()).show();return;
         }
-        new AlertDialog.Builder(this).setTitle("Araç görüşmeleri kapatılsın mı?").setMessage(name+"\nBeyaz listedekiler ve normal telefon aramaları dahil, bu aracın Bluetooth görüşme profili kapatılır. Müzik profili değiştirilmez. Telefonun kendisinde çağrı devam edebilir.\nUygulamayı silmeden önce bu modu kapat. ADB kullanılamıyorsa Bluetooth → araç → Aramalar ayarını elle açabilirsin.")
+        new AlertDialog.Builder(this).setTitle("Bu cihazda görüşmeler susturulsun mu?").setMessage(name+"\nBeyaz listedekiler ve normal telefon aramaları dahil, bu cihazın Bluetooth görüşme profili kapatılır. Müzik profili değiştirilmez. Telefonun kendisinde çağrı devam edebilir.\nUygulamayı silmeden önce bu modu kapat. ADB kullanılamıyorsa Bluetooth → cihaz → Aramalar ayarını elle açabilirsin.")
             .setNegativeButton("Vazgeç",null).setPositiveButton("Anladım, aç",(d,w)->{pendingCarAddress="";pendingCarName="";carSilence.enable(address,name);}).show();
     }
     private void openWeb(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse(url)));}catch(ActivityNotFoundException|SecurityException ex){toast("Bağlantı açılamadı: "+url);}}
@@ -297,7 +304,7 @@ public final class MainActivity extends Activity {
         }catch(RuntimeException ex){toast("Eşleştirme bildirimi başlatılamadı. CallGuard bildirim izinlerini kontrol et.");}
     }
     private void carSilenceDetails(){
-        if(adbGuide==null)adbGuide=new AdbGuide(this,carSilence,this::continueSelectedCar,this::toast);
+        if(adbGuide==null)adbGuide=new AdbGuide(this,carSilence,this::continueSelectedCar,this::manageBluetoothDevices,this::toast);
         adbGuide.show();
     }
     private void backgroundCard(){

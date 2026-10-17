@@ -2,84 +2,85 @@ package com.callguard;
 
 import android.content.*;
 import android.os.*;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 import org.json.*;
 
-/** Built-in local ADB client. Its local recovery journal is deliberately excluded from cloud/Drive. */
+/** Multi-device local ADB controller; each configuration owns its own recovery journal. */
 final class CarSilence implements AutoCloseable {
-    private final Context context;
-    private final SharedPreferences prefs;
-    private final Handler main=new Handler(Looper.getMainLooper());
-    private final ExecutorService worker=Executors.newSingleThreadExecutor();
-    private final Runnable changed;
-    private final Consumer<String> message;
-    private boolean busy,closed;
-    private boolean silencedVerified;
-    private String verified="";
-    private final CarSilencePolicy.Journal journal=new CarSilencePolicy.Journal(){
-        public CarSilencePolicy.Saved load()throws Exception{
-            String raw=prefs.getString("recovery",null);if(raw==null)return null;JSONObject value=new JSONObject(raw);
-            return new CarSilencePolicy.Saved(value.getString("address"),value.getString("name"),value.getInt("previous"));
-        }
-        public void save(CarSilencePolicy.Saved value)throws Exception{
-            String raw=new JSONObject().put("address",value.address).put("name",value.name).put("previous",value.previous).toString();
-            if(!prefs.edit().putString("recovery",raw).commit())throw new IllegalStateException("Geri yükleme kaydı yazılamadı. Araç ayarı değiştirilmedi.");
-        }
-        public void clear(){if(!prefs.edit().remove("recovery").commit())throw new IllegalStateException("Araç ayarı geri yüklendi, kayıt temizlenemedi. Yeniden kontrol et.");}
-    };
+    private final Context context;private final SharedPreferences prefs;
+    private final Handler main=new Handler(Looper.getMainLooper());private final ExecutorService worker=Executors.newSingleThreadExecutor();
+    private final Runnable changed;private final Consumer<String> message;
+    private BluetoothSilenceStore configurations;private boolean busy,closed;private String storageError="";
+    private final Map<String,Integer> verified=new HashMap<>();private final Set<String> unavailable=new HashSet<>();
     CarSilence(Context context,Runnable changed,Consumer<String> message){
-        this.context=context.getApplicationContext();this.changed=changed;this.message=message;
-        prefs=this.context.getSharedPreferences("car-silence",Context.MODE_PRIVATE);
-
+        this.context=context.getApplicationContext();this.changed=changed;this.message=message;prefs=this.context.getSharedPreferences("car-silence",Context.MODE_PRIVATE);
+        try{configurations=new BluetoothSilenceStore(new BluetoothSilenceStore.Storage(){
+            public String current(){return prefs.getString("devices-v1",null);}public String legacy(){return prefs.getString("recovery",null);}
+            public void write(String value,boolean removeLegacy)throws Exception{SharedPreferences.Editor editor=prefs.edit().putString("devices-v1",value);if(removeLegacy)editor.remove("recovery");if(!editor.commit())throw new java.io.IOException("Cihaz ayarları kaydedilemedi; mevcut kayıtlar korunuyor.");}
+        });}catch(Exception ex){storageError="Cihaz yapılandırması okunamadı. Önceki kayıtlar korundu; Bluetooth ayarlarını kontrol et.";CallDiagnostics.record(this.context,"BT_KAYIT_OKUNAMADI: "+ex.getClass().getSimpleName());}
     }
-    private void tell(String value){if(!closed)message.accept(value);}
-    private void update(){if(!closed)changed.run();}
-    boolean silencedVerified(){return silencedVerified;}
-    void invalidateSetupVerification(){silencedVerified=false;}
-    boolean saved(){return prefs.contains("recovery");}
+    private void tell(String value){if(!closed)message.accept(value);}private void update(){if(!closed)changed.run();}
+    boolean isBusy(){return busy;}
+    List<BluetoothSilenceStore.Entry> devices(){return configurations==null?Collections.emptyList():configurations.entries();}
+    boolean saved(){for(BluetoothSilenceStore.Entry entry:devices())if(entry.recovery())return true;return false;}
+    boolean hasRecovery(String address){BluetoothSilenceStore.Entry entry=configurations==null?null:configurations.get(address);return entry!=null&&entry.recovery();}
+    boolean silencedVerified(){for(BluetoothSilenceStore.Entry entry:devices())if(entry.recovery()&&Integer.valueOf(0).equals(verified.get(entry.address)))return true;return false;}
+    boolean verifiedSilent(String address){return hasRecovery(address)&&Integer.valueOf(0).equals(verified.get(address));}
+    void invalidateSetupVerification(){verified.clear();unavailable.clear();}
     String status(){
-        if(busy)return "Araç ayarı kontrol ediliyor…";
-        if(!verified.isEmpty())return verified;
-        return saved()?"Geri yükleme kaydı var · araç durumu henüz doğrulanmadı":"Kapalı · araç ayarı değiştirilmedi";
+        if(!storageError.isEmpty())return storageError;if(busy)return "Cihaz ayarları kontrol ediliyor…";
+        int active=0,checked=0;for(BluetoothSilenceStore.Entry entry:devices())if(entry.recovery()){active++;if(Integer.valueOf(0).equals(verified.get(entry.address)))checked++;}
+        if(active>0)return active+" cihaz için sessizlik kaydı · "+checked+" doğrulandı";
+        return devices().isEmpty()?"Henüz cihaz eklenmedi":devices().size()+" cihaz hatırlanıyor · CallGuard sessizliği kapalı";
+    }
+    String deviceStatus(BluetoothSilenceStore.Entry entry){
+        if(unavailable.contains(entry.address))return "Durum doğrulanamadı · eşleşme ve görüşme desteğini kontrol et";
+        Integer value=verified.get(entry.address);
+        if(entry.recovery())return value==null?"Sessizlik tercihi kayıtlı · henüz doğrulanmadı":value==0?"Sessiz · görüşme profili kapalı, doğrulandı":value==100?"Görüşmeler açık · geri yükleme kaydı korunuyor":"Görüşme ayarı belirsiz · kayıt korundu";
+        return value!=null&&value==0?"CallGuard sessizliği kapalı · görüşme profili zaten kapalı olabilir":"CallGuard sessizliği kapalı · cihaz yapılandırması kayıtlı";
+    }
+    boolean remember(String address,String name){
+        if(configurations==null){tell(storageError);return false;}
+        try{configurations.remember(address,name);update();return true;}catch(Exception ex){tell("Cihaz yapılandırması kaydedilemedi; mevcut kayıtlar korundu.");return false;}
+    }
+    void forget(String address){
+        if(busy){tell("Önce devam eden işlemin bitmesini bekle.");return;}if(configurations==null){tell(storageError);return;}
+        try{configurations.forget(address);verified.remove(address);unavailable.remove(address);update();tell("Bu cihazın CallGuard yapılandırması unutuldu. Bluetooth eşleştirmesi silinmedi.");}catch(Exception ex){tell(hasRecovery(address)?"Önce bu cihazın önceki görüşme ayarını geri yükle.":"Yapılandırma silinemedi; kayıtlar korundu.");}
     }
     static boolean ready(){return LocalAdb.ready();}
-    private interface Job {void run(LocalAdb service)throws Exception;}
-    private void run(Job job){
-        if(closed)return;if(busy){tell("Önce devam eden işlemin bitmesini bekle.");return;}
-        if(!ready()){tell("Kurulum ve durum bölümünden yerel ADB bağlantısını aç. Varsa geri yükleme kaydı korundu.");return;}
-        execute(()->job.run(LocalAdb.get(context)),null);
-    }
     private interface Task {void run()throws Exception;}
     private void execute(Task task,Runnable success){
-        if(closed||busy)return;busy=true;silencedVerified=false;verified="";update();
-        worker.execute(()->{
-            String error=null;try{task.run();}catch(Exception ex){error=CarErrors.describe(ex);CallDiagnostics.record(context,"YEREL_ADB_HATASI: "+ex.getClass().getSimpleName());}
+        if(closed)return;if(busy){tell("Önce devam eden işlemin bitmesini bekle.");return;}busy=true;update();
+        worker.execute(()->{String error=null;try{task.run();}catch(Exception ex){error=CarErrors.describe(ex);CallDiagnostics.record(context,"BLUETOOTH_ISLEM_HATASI: "+ex.getClass().getSimpleName());}
             final String failure=error;main.post(()->{busy=false;if(!closed){if(failure!=null)tell(failure);else if(success!=null)success.run();update();}});
         });
     }
+    private void run(Task task,Runnable success){if(configurations==null){tell(storageError);return;}if(!ready()){tell("ADB kurulum ve durum bölümünden bağlantıyı aç. Cihaz yapılandırmaları korundu.");return;}execute(task,success);}
     void pair(int port,String code,Runnable success){execute(()->{if(!LocalAdb.get(context).pairLocal(port,code))throw new IllegalStateException();},success);}
     void connect(int port,Runnable success){execute(()->LocalAdb.get(context).connectLocal(port),success);}
-    void disconnect(){execute(()->LocalAdb.get(context).disconnectLocal(),()->tell("Yerel ADB bağlantısı kapatıldı. Araç ayarı değiştirilmedi."));}
+    void disconnect(){execute(()->LocalAdb.get(context).disconnectLocal(),()->tell("ADB bağlantısı kesildi. Cihaz ayarları değiştirilmedi."));}
     private CarSilencePolicy.Backend backend(LocalAdb service){return new CarSilencePolicy.Backend(){public int read(String address)throws Exception{return service.command("read",address);}public boolean write(String address,int policy)throws Exception{return service.command("write",address,Integer.toString(policy))==1;}};}
     void list(Consumer<JSONArray> result){
-        if(closed)return;if(busy){tell("Önce devam eden işlemin bitmesini bekle.");return;}
-        busy=true;update();worker.execute(()->{
-            JSONArray devices=null;String error=null;
-            try{devices=CarDevices.load(context);}catch(Exception ex){error=CarErrors.describe(ex);CallDiagnostics.record(context,"ARAC_LISTE_HATASI: "+ex.getClass().getSimpleName());}
-            final JSONArray found=devices;final String failure=error;
-            main.post(()->{busy=false;update();if(!closed){if(failure!=null)tell(failure);else if(found!=null)result.accept(found);}});
-        });
+        final JSONArray[] values=new JSONArray[1];execute(()->values[0]=CarDevices.load(context),()->result.accept(values[0]));
     }
-    void enable(String address,String name){run(service->{CarSilencePolicy.enable(backend(service),journal,address,name);main.post(()->{silencedVerified=true;verified="Görüşme profili kapalı · "+name;tell("Araç görüşme profili kapatıldı. Müzik profili değiştirilmedi.");});});}
-    void restore(){run(service->{CarSilencePolicy.restore(backend(service),journal);main.post(()->{silencedVerified=false;verified="Kapalı · önceki görüşme ayarı geri yüklendi";tell("Önceki görüşme ayarı geri yüklendi. Gerekirse araçtan yeniden bağlan.");});});}
-    void inspect(){run(service->{CarSilencePolicy.Saved value=journal.load();String status="Kapalı · geri yükleme kaydı yok";if(value!=null){int policy=service.command("read",value.address);int state=service.command("state",value.address);status=(policy==0?"Görüşme profili kapalı":policy==100?"Görüşme profili açık":"Görüşme ayarı belirsiz")+" · "+value.name+"\nHFP bağlantısı: "+(state==0?"kesik":state==1?"bağlanıyor":state==2?"bağlı":"kesiliyor")+" · geri yükleme kaydı saklanıyor";}final String found=status;main.post(()->verified=found);});}
-    void verifyForSetup(Runnable finished){
-        silencedVerified=false;if(closed||busy||!saved()||!ready()){finished.run();return;}
-        busy=true;worker.execute(()->{
-            boolean silent=false;String status="Araç ayarı doğrulanamadı · geri yükleme kaydı korundu";
-            try{CarSilencePolicy.Saved value=journal.load();if(value!=null){int policy=LocalAdb.get(context).command("read",value.address);silent=policy==0;status=(policy==0?"Görüşme profili kapalı":policy==100?"Görüşme profili açık":"Görüşme ayarı belirsiz")+" · "+value.name;}}catch(Exception ex){CallDiagnostics.record(context,"ARAC_KURULUM_KONTROL: "+ex.getClass().getSimpleName());}
-            final boolean result=silent;final String found=status;main.post(()->{busy=false;if(!closed){silencedVerified=result;verified=found;update();finished.run();}});
+    void enable(String address,String name){
+        final String key=BluetoothSilenceStore.address(address);verified.remove(key);unavailable.remove(key);
+        run(()->CarSilencePolicy.enable(backend(LocalAdb.get(context)),configurations.journal(key),key,name),()->{verified.put(key,0);tell(name+": görüşme sessizliği açıldı. Diğer cihazlar değiştirilmedi.");});
+    }
+    void restore(String address){
+        final String key=BluetoothSilenceStore.address(address);verified.remove(key);unavailable.remove(key);
+        run(()->{BluetoothSilenceStore.Entry entry=configurations.get(key);if(entry==null||!entry.recovery())throw new IllegalStateException();CarSilencePolicy.restore(backend(LocalAdb.get(context)),configurations.journal(key));},()->{verified.put(key,100);tell("Bu cihazın önceki görüşme ayarı geri yüklendi. Yapılandırması hatırlanıyor.");});
+    }
+    void verifyForSetup(Runnable finished){verify(true,finished);}
+    void inspectAll(){verify(false,()->{});}
+    private void verify(boolean recoveryOnly,Runnable finished){
+        if(closed||busy||configurations==null||!ready()){finished.run();return;}
+        List<BluetoothSilenceStore.Entry> entries=devices();busy=true;update();
+        worker.execute(()->{Map<String,Integer> results=new HashMap<>();Set<String> failed=new HashSet<>();
+            for(BluetoothSilenceStore.Entry entry:entries){if(recoveryOnly&&!entry.recovery())continue;try{results.put(entry.address,LocalAdb.get(context).command("read",entry.address));}catch(Exception ex){failed.add(entry.address);CallDiagnostics.record(context,"BT_CIHAZ_KONTROL: "+ex.getClass().getSimpleName());}}
+            main.post(()->{busy=false;if(!closed){for(String address:failed){verified.remove(address);unavailable.add(address);}for(Map.Entry<String,Integer> entry:results.entrySet()){verified.put(entry.getKey(),entry.getValue());unavailable.remove(entry.getKey());}update();finished.run();}});
         });
     }
     @Override public void close(){closed=true;worker.shutdown();}

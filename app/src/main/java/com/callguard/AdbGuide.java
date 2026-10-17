@@ -16,20 +16,20 @@ import java.util.function.Consumer;
 /** Evidence-based setup checklist with a single next action and foreground-only checks. */
 final class AdbGuide {
     private static final int GREEN=0xff08634e,RED=0xffb3261e,INK=0xff14221d,MUTED=0xff65736d;
-    private final Activity activity;private final CarSilence car;private final Runnable choose;private final Consumer<String> message;
+    private final Activity activity;private final CarSilence car;private final Runnable choose,devices;private final Consumer<String> message;
     private final AdbSetupMonitor monitor;private final Handler main=new Handler(Looper.getMainLooper());
     private AlertDialog dialog;private LinearLayout panel;private ScrollView scroll;
     private boolean resumed,developerConfirmed;private String signature="";
     private final Runnable tick=new Runnable(){public void run(){if(resumed&&showing()){monitor.poll();refresh();main.postDelayed(this,1200);}}};
-    AdbGuide(Activity activity,CarSilence car,Runnable choose,Consumer<String> message){
-        this.activity=activity;this.car=car;this.choose=choose;this.message=message;
+    AdbGuide(Activity activity,CarSilence car,Runnable choose,Runnable devices,Consumer<String> message){
+        this.activity=activity;this.car=car;this.choose=choose;this.devices=devices;this.message=message;
         monitor=new AdbSetupMonitor(activity,this::refresh,()->car.verifyForSetup(this::refresh));
     }
     boolean showing(){return dialog!=null&&dialog.isShowing();}
     void show(){
         if(showing()){refresh();return;}
         panel=column();scroll=new ScrollView(activity);scroll.addView(panel);
-        dialog=new AlertDialog.Builder(activity).setTitle("Araç sessizliği kurulumu").setView(scroll).setNegativeButton("Kapat",null).create();
+        dialog=new AlertDialog.Builder(activity).setTitle("Bluetooth sessizliği kurulumu").setView(scroll).setNegativeButton("Kapat",null).create();
         dialog.setOnDismissListener(d->{pause();});dialog.show();signature="";resume();
     }
     void refresh(){
@@ -40,16 +40,15 @@ final class AdbGuide {
         int y=scroll.getScrollY();panel.removeAllViews();
         TextView progress=label(panel,state.completed()+" / 5 adım tamamlandı",19,GREEN,true);progress.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         label(panel,monitor.detail.isEmpty()?"Mevcut ayarların otomatik kontrol edilir.":monitor.detail,13,MUTED,false);
-        int next=state.next();String[] actions={"1 · Geliştirici seçeneklerini hazırla","2 · Kablosuz hata ayıklamayı aç","3 · Bildirimden kodla eşleştir","4 · Bağlantıyı otomatik kontrol et","5 · Aracını seç ve sessizliği aç","Tamam · kurulumu kapat"};
-        if(next==4&&car.saved())actions[4]="Kayıtlı aracın durumunu kontrol et";
+        int next=state.next();String[] actions={"1 · Geliştirici seçeneklerini hazırla","2 · Kablosuz hata ayıklamayı aç","3 · Bildirimden kodla eşleştir","4 · Bağlantıyı otomatik kontrol et","5 · Bluetooth cihazlarını yönet","Tamam · kurulumu kapat"};
         button(panel,actions[next],true,()->advance(next));
-        String[] titles={"Geliştirici seçenekleri","Kablosuz hata ayıklama","CallGuard eşleştirmesi","Yetkili ADB bağlantısı","Araç sessizliği"};
+        String[] titles={"Geliştirici seçenekleri","Kablosuz hata ayıklama","CallGuard eşleştirmesi","Yetkili ADB bağlantısı","Bluetooth görüşme sessizliği"};
         String[] notes={
             state.done[0]?(developerConfirmed&&!monitor.wireless&&!connected?"Açık olduğunu sen onayladın.":"Kablosuz ADB üzerinden doğrulandı."):"Henüz doğrulanamadı. Telefon hakkında → Yazılım bilgileri → Yapım numarası: 7 kez dokun.",
             state.done[1]?"Bu telefonda kablosuz ADB açık.":"Geliştirici seçeneklerinde Kablosuz hata ayıklamayı aç.",
             state.done[2]?"CallGuard kimliğiyle eşleştirme doğrulandı.":"Android’in kod penceresi açıkken bildirimde Kod gir düğmesini kullan.",
             state.done[3]?"Bağlantı ve ADB yetkisi canlı olarak doğrulandı.":"Kayıtlı eşleştirme otomatik denenir. Gerekirse bağlantı portunu elle gir.",
-            state.done[4]?"Aracın görüşme profilinin kapalı olduğu doğrulandı.":car.saved()?car.status()+". İstersen önceki ayarı geri yükleyip yeniden seçebilirsin.":"Aracını seç. Sessizliği açmadan önce onayın istenir."
+            state.done[4]?"En az bir cihazın sessiz olduğu doğrulandı. Cihazlarını ayrı yönetebilirsin.":car.saved()?car.status()+". Cihazlarım ekranından her birini ayrı kontrol edebilirsin.":"Cihaz ekle. Her cihazın sessizliğini ayrı açıp kapatabilirsin."
         };
         for(int i=0;i<titles.length;i++)step(panel,titles[i],notes[i],state.done[i],next==i);
         if(next==0){
@@ -60,9 +59,9 @@ final class AdbGuide {
             button(panel,"Durumu yeniden kontrol et",false,monitor::rescan);
             button(panel,"Bağlantı portunu elle gir",false,this::connect);
         }
-        if(car.saved())button(panel,"Sessizliği kapat ve önceki ayarı geri yükle",false,car::restore);
+        button(panel,"Bluetooth cihazlarımı yönet",false,()->{dialog.dismiss();devices.run();});
         if(state.done[3])button(panel,"ADB bağlantısını kes",false,()->{monitor.disconnectRequested();car.disconnect();});
-        label(panel,"Araç sessizliği seçilen aracın bütün Bluetooth görüşmelerini etkiler; müzik profili değişmez. Uygulamayı silmeden önce araç ayarını geri yükle.",12,MUTED,false);
+        label(panel,"Sessizlik seçtiğin cihazın bütün Bluetooth görüşmelerini etkiler; müzik profili değişmez. Uygulamayı silmeden önce cihazların önceki ayarlarını geri yükle.",12,MUTED,false);
         scroll.post(()->{if(showing())scroll.scrollTo(0,y);});
     }
     private void advance(int next){
@@ -71,7 +70,7 @@ final class AdbGuide {
             case 1:wireless();break;
             case 2:if(Build.VERSION.SDK_INT<30)message.accept("Kablosuz eşleştirme için Android 11 veya üzeri gerekir.");else ((MainActivity)activity).startNotificationPairing();break;
             case 3:monitor.rescan();break;
-            case 4:if(car.saved())car.verifyForSetup(this::refresh);else{dialog.dismiss();choose.run();}break;
+            case 4:dialog.dismiss();choose.run();break;
             default:dialog.dismiss();
         }
     }

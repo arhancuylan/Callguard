@@ -5,6 +5,7 @@ import java.util.Locale;
 
 /** Fixed operations only. Device names, account data and user command text never enter the shell. */
 final class CarCommandProtocol {
+    static final class HelperFailure extends IOException {HelperFailure(){super("Bluetooth helper operation failed");}}
     static void validate(String[] args){
         if(args==null||args.length==0)throw new IllegalArgumentException();
         if(args[0].equals("probe")&&args.length==1)return;
@@ -22,7 +23,8 @@ final class CarCommandProtocol {
         Integer found=null;
         for(String line:output.split("\\r?\\n"))if(line.startsWith("CGCAR1:")){
             if(found!=null)throw new IOException("Invalid helper response");
-            try{found=Integer.valueOf(line.substring(7));}catch(NumberFormatException ex){throw new IOException("Car helper failed");}
+            String value=line.substring(7);if(value.equals("ERROR"))throw new HelperFailure();
+            try{found=Integer.valueOf(value);}catch(NumberFormatException ex){throw new IOException("Car helper failed");}
         }
         if(found==null)throw new IOException("Car helper did not respond");return found;
     }

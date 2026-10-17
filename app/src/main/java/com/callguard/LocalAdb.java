@@ -26,7 +26,7 @@ final class LocalAdb extends AbsAdbConnectionManager {
     static boolean ready(){LocalAdb current=instance;io.github.muntashirakon.adb.AdbConnection peer=current==null?null:current.peer;return current!=null&&current.authorized&&peer!=null&&peer.isConnected()&&peer.isConnectionEstablished();}
     static boolean pairKnown(){LocalAdb current=instance;return current!=null&&current.pairedAcknowledged;}
     synchronized void verifyLocal()throws Exception{
-        if(command("probe")!=2000){authorized=false;throw new IOException("ADB identity not verified");}
+        try{if(command("probe")!=2000)throw new IOException("ADB identity not verified");}catch(Exception ex){authorized=false;throw ex;}
         peer=getAdbConnection();authorized=true;pairedAcknowledged=true;
     }
     @Override protected PrivateKey getPrivateKey(){return key;}
@@ -63,7 +63,7 @@ final class LocalAdb extends AbsAdbConnectionManager {
                 Integer reply=CarCommandProtocol.completed(result.toString("UTF-8"));if(reply!=null)return reply;
             }
             throw new IOException("Helper did not respond");
-        }catch(Exception ex){authorized=false;throw ex;}finally{deadline.cancel(false);}
+        }catch(CarCommandProtocol.HelperFailure ex){throw ex;}catch(Exception ex){authorized=false;throw ex;}finally{deadline.cancel(false);}
     }
     // Do not call AbsAdbConnectionManager.close(): this device identity must survive reconnection.
     synchronized void disconnectLocal()throws IOException{authorized=false;peer=null;disconnect();}

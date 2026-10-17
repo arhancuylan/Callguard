@@ -47,7 +47,7 @@ public final class AdbPairingService extends Service {
     private void discoverConnection(){
         discovery=new LocalAdbDiscovery(this,false,value->{if(closed||!connecting||busy||value<=0)return;busy=true;
             worker.execute(()->{boolean success=false;try{LocalAdb.get(this).connectLocal(value);success=true;}catch(Exception ex){CallDiagnostics.record(this,"ADB_BILDIRIM_BAGLANTI: "+ex.getClass().getSimpleName());}
-                final boolean connected=success;main.post(()->{if(closed)return;busy=false;finish(connected?"CallGuard ADB bağlantısı hazır":"Eşleşti · bağlantıyı uygulamadan aç",connected?"CallGuard’a dönüp aracını seçebilirsin.":"CallGuard → Kurulum ve durum → Yerel ADB bağlantısını aç.");});});
+                final boolean connected=success;main.post(()->{if(closed)return;busy=false;finish(connected?"CallGuard ADB bağlantısı hazır":"Eşleşti · bağlantıyı uygulamadan aç",connected?"CallGuard’a dönüp Bluetooth cihazlarını yönetebilirsin.":"CallGuard → Kurulum ve durum → Yerel ADB bağlantısını aç.");});});
         });
         main.postDelayed(()->{if(!closed&&connecting&&!busy)finish("Eşleştirme başarılı","Otomatik bağlantı bulunamadı. CallGuard → Kurulum ve durum → Yerel ADB bağlantısını aç.");},20000);
     }
