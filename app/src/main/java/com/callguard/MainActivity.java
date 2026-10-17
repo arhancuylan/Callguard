@@ -26,6 +26,7 @@ public final class MainActivity extends Activity {
     private ProBilling billing;
     private CarSilence carSilence;
     private AdbGuide adbGuide;
+    private String pendingCarAddress="",pendingCarName="";
     private Store store; private LinearLayout root,body,nav; private ScrollView scroll;
     private final int[] tabScrollY=new int[5];
     private boolean backupPage=false;
@@ -37,7 +38,7 @@ public final class MainActivity extends Activity {
     private final BroadcastReceiver refresh=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(!rendering)render();}};
     @Override public void onCreate(Bundle state){
         super.onCreate(state);store=new Store(this);carSilence=new CarSilence(this,()->{if(!isFinishing()&&!isDestroyed()){render();if(adbGuide!=null)adbGuide.refresh();}},this::toast);
-        if(state!=null){tab=state.getInt("tab");historyTodayOnly=state.getBoolean("historyTodayOnly",false);white=state.getBoolean("white",true);search=state.getString("search","");backupPage=state.getBoolean("backupPage",false);driveAction=state.getString("driveAction","");driveAccount=state.getString("driveAccount","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
+        if(state!=null){pendingCarAddress=state.getString("pendingCarAddress","");pendingCarName=state.getString("pendingCarName","");tab=state.getInt("tab");historyTodayOnly=state.getBoolean("historyTodayOnly",false);white=state.getBoolean("white",true);search=state.getString("search","");backupPage=state.getBoolean("backupPage",false);driveAction=state.getString("driveAction","");driveAccount=state.getString("driveAccount","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
         if(Build.VERSION.SDK_INT>=33)registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"),Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"));
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
@@ -46,7 +47,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onResume(){super.onResume();BackgroundProtection.reconnect(this);if(store!=null)render();if(adbGuide!=null)adbGuide.resume();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
     @Override protected void onPause(){if(adbGuide!=null)adbGuide.pause();statusHandler.removeCallbacks(statusTick);super.onPause();}
-    @Override protected void onSaveInstanceState(Bundle out){out.putBoolean("historyTodayOnly",historyTodayOnly);out.putBoolean("adbGuideOpen",adbGuide!=null&&adbGuide.showing());out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
+    @Override protected void onSaveInstanceState(Bundle out){out.putString("pendingCarAddress",pendingCarAddress);out.putString("pendingCarName",pendingCarName);out.putBoolean("historyTodayOnly",historyTodayOnly);out.putBoolean("adbGuideOpen",adbGuide!=null&&adbGuide.showing());out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
     @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(adbGuide!=null)adbGuide.close();if(carSilence!=null)carSilence.close();if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private GradientDrawable bg(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
@@ -255,7 +256,6 @@ public final class MainActivity extends Activity {
         if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED){
             new AlertDialog.Builder(this).setTitle("Eşleşmiş aracını listele").setMessage("Telefonla önceden eşleştirdiğin Bluetooth cihazlarını göstermek için Yakındaki cihazlar izni gerekir. Yeni cihaz taranmaz, konum izni istenmez; cihaz listesi buluta gönderilmez.").setNegativeButton("Vazgeç",null).setPositiveButton("İzin ver",(d,w)->requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},43)).show();return;
         }
-        if(!CarSilence.ready()){carSilenceDetails();return;}
         carSilence.list(devices->{
             if(isFinishing()||isDestroyed())return;
             if(devices.length()==0){toast("Eşleşmiş cihaz yok. Önce telefonun Bluetooth ayarlarından aracını eşleştir.");return;}
@@ -263,10 +263,20 @@ public final class MainActivity extends Activity {
             for(int i=0;i<labels.length;i++){org.json.JSONObject device=devices.optJSONObject(i);labels[i]=device.optString("name")+" · "+device.optString("address")+(device.optInt("state")==2?" · görüşme bağlantısı var":"");}
             new AlertDialog.Builder(this).setTitle("Yalnızca aracını seç").setItems(labels,(d,index)->{
                 org.json.JSONObject device=devices.optJSONObject(index);String address=device.optString("address"),name=device.optString("name");
-                new AlertDialog.Builder(this).setTitle("Araç görüşmeleri kapatılsın mı?").setMessage(name+"\nBeyaz listedekiler ve normal telefon aramaları dahil, bu aracın Bluetooth görüşme profili kapatılır. Müzik profili değiştirilmez. Bu işlem çağrıyı telefonun kendisinde reddetmez.\nUygulamayı silmeden veya verilerini temizlemeden önce bu modu kapat. ADB bağlantısı yoksa telefonun Bluetooth → araç → Aramalar ayarını elle açabilirsin.")
-                    .setNegativeButton("Vazgeç",null).setPositiveButton("Anladım, aç",(dialog,which)->carSilence.enable(address,name)).show();
+                confirmSilentCar(address,name);
             }).setNegativeButton("Vazgeç",null).show();
         });
+    }
+    private void continueSelectedCar(){
+        if(!pendingCarAddress.isEmpty())confirmSilentCar(pendingCarAddress,pendingCarName);else chooseSilentCar();
+    }
+    private void confirmSilentCar(String address,String name){
+        if(!CarSilence.ready()){
+            pendingCarAddress=address;pendingCarName=name;
+            new AlertDialog.Builder(this).setTitle("Aracın seçildi").setMessage(name+"\nSessizliği açmak için bir defalık ADB kurulumunu tamamla. Seçimin bu ekranda korunur; ayar henüz değiştirilmedi.").setNegativeButton("Daha sonra",null).setPositiveButton("Kurulumu tamamla",(d,w)->carSilenceDetails()).show();return;
+        }
+        new AlertDialog.Builder(this).setTitle("Araç görüşmeleri kapatılsın mı?").setMessage(name+"\nBeyaz listedekiler ve normal telefon aramaları dahil, bu aracın Bluetooth görüşme profili kapatılır. Müzik profili değiştirilmez. Telefonun kendisinde çağrı devam edebilir.\nUygulamayı silmeden önce bu modu kapat. ADB kullanılamıyorsa Bluetooth → araç → Aramalar ayarını elle açabilirsin.")
+            .setNegativeButton("Vazgeç",null).setPositiveButton("Anladım, aç",(d,w)->{pendingCarAddress="";pendingCarName="";carSilence.enable(address,name);}).show();
     }
     private void openWeb(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse(url)));}catch(ActivityNotFoundException|SecurityException ex){toast("Bağlantı açılamadı: "+url);}}
     void startNotificationPairing(){
@@ -287,7 +297,7 @@ public final class MainActivity extends Activity {
         }catch(RuntimeException ex){toast("Eşleştirme bildirimi başlatılamadı. CallGuard bildirim izinlerini kontrol et.");}
     }
     private void carSilenceDetails(){
-        if(adbGuide==null)adbGuide=new AdbGuide(this,carSilence,this::chooseSilentCar,this::toast);
+        if(adbGuide==null)adbGuide=new AdbGuide(this,carSilence,this::continueSelectedCar,this::toast);
         adbGuide.show();
     }
     private void backgroundCard(){

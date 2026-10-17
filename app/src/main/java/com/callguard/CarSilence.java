@@ -15,6 +15,7 @@ final class CarSilence implements AutoCloseable {
     private final Runnable changed;
     private final Consumer<String> message;
     private boolean busy,closed;
+    private boolean silencedVerified;
     private String verified="";
     private final CarSilencePolicy.Journal journal=new CarSilencePolicy.Journal(){
         public CarSilencePolicy.Saved load()throws Exception{
@@ -34,6 +35,8 @@ final class CarSilence implements AutoCloseable {
     }
     private void tell(String value){if(!closed)message.accept(value);}
     private void update(){if(!closed)changed.run();}
+    boolean silencedVerified(){return silencedVerified;}
+    void invalidateSetupVerification(){silencedVerified=false;}
     boolean saved(){return prefs.contains("recovery");}
     String status(){
         if(busy)return "Araç ayarı kontrol ediliyor…";
@@ -49,7 +52,7 @@ final class CarSilence implements AutoCloseable {
     }
     private interface Task {void run()throws Exception;}
     private void execute(Task task,Runnable success){
-        if(closed||busy)return;busy=true;verified="";update();
+        if(closed||busy)return;busy=true;silencedVerified=false;verified="";update();
         worker.execute(()->{
             String error=null;try{task.run();}catch(Exception ex){error=CarErrors.describe(ex);CallDiagnostics.record(context,"YEREL_ADB_HATASI: "+ex.getClass().getSimpleName());}
             final String failure=error;main.post(()->{busy=false;if(!closed){if(failure!=null)tell(failure);else if(success!=null)success.run();update();}});
@@ -68,8 +71,16 @@ final class CarSilence implements AutoCloseable {
             main.post(()->{busy=false;update();if(!closed){if(failure!=null)tell(failure);else if(found!=null)result.accept(found);}});
         });
     }
-    void enable(String address,String name){run(service->{CarSilencePolicy.enable(backend(service),journal,address,name);main.post(()->{verified="Görüşme profili kapalı · "+name;tell("Araç görüşme profili kapatıldı. Müzik profili değiştirilmedi.");});});}
-    void restore(){run(service->{CarSilencePolicy.restore(backend(service),journal);main.post(()->{verified="Kapalı · önceki görüşme ayarı geri yüklendi";tell("Önceki görüşme ayarı geri yüklendi. Gerekirse araçtan yeniden bağlan.");});});}
+    void enable(String address,String name){run(service->{CarSilencePolicy.enable(backend(service),journal,address,name);main.post(()->{silencedVerified=true;verified="Görüşme profili kapalı · "+name;tell("Araç görüşme profili kapatıldı. Müzik profili değiştirilmedi.");});});}
+    void restore(){run(service->{CarSilencePolicy.restore(backend(service),journal);main.post(()->{silencedVerified=false;verified="Kapalı · önceki görüşme ayarı geri yüklendi";tell("Önceki görüşme ayarı geri yüklendi. Gerekirse araçtan yeniden bağlan.");});});}
     void inspect(){run(service->{CarSilencePolicy.Saved value=journal.load();String status="Kapalı · geri yükleme kaydı yok";if(value!=null){int policy=service.command("read",value.address);int state=service.command("state",value.address);status=(policy==0?"Görüşme profili kapalı":policy==100?"Görüşme profili açık":"Görüşme ayarı belirsiz")+" · "+value.name+"\nHFP bağlantısı: "+(state==0?"kesik":state==1?"bağlanıyor":state==2?"bağlı":"kesiliyor")+" · geri yükleme kaydı saklanıyor";}final String found=status;main.post(()->verified=found);});}
+    void verifyForSetup(Runnable finished){
+        silencedVerified=false;if(closed||busy||!saved()||!ready()){finished.run();return;}
+        busy=true;worker.execute(()->{
+            boolean silent=false;String status="Araç ayarı doğrulanamadı · geri yükleme kaydı korundu";
+            try{CarSilencePolicy.Saved value=journal.load();if(value!=null){int policy=LocalAdb.get(context).command("read",value.address);silent=policy==0;status=(policy==0?"Görüşme profili kapalı":policy==100?"Görüşme profili açık":"Görüşme ayarı belirsiz")+" · "+value.name;}}catch(Exception ex){CallDiagnostics.record(context,"ARAC_KURULUM_KONTROL: "+ex.getClass().getSimpleName());}
+            final boolean result=silent;final String found=status;main.post(()->{busy=false;if(!closed){silencedVerified=result;verified=found;update();finished.run();}});
+        });
+    }
     @Override public void close(){closed=true;worker.shutdown();}
 }

@@ -12,7 +12,8 @@ import io.github.muntashirakon.adb.AdbStream;
 /** One local device only. Identity is encrypted with Android Keystore and excluded from backups. */
 final class LocalAdb extends AbsAdbConnectionManager {
     private static volatile LocalAdb instance;
-    private volatile boolean authorized;
+    private volatile boolean authorized,pairedAcknowledged;
+    private volatile io.github.muntashirakon.adb.AdbConnection peer;
     private final PrivateKey key;
     private final Certificate certificate;
     private final Context context;
@@ -22,7 +23,12 @@ final class LocalAdb extends AbsAdbConnectionManager {
         AdbIdentity identity=AdbIdentity.load(this.context);key=identity.key;certificate=identity.certificate;
     }
     static synchronized LocalAdb get(Context context)throws Exception {if(instance==null)instance=new LocalAdb(context);return instance;}
-    static boolean ready(){LocalAdb current=instance;return current!=null&&current.authorized;}
+    static boolean ready(){LocalAdb current=instance;return current!=null&&current.authorized&&current.peer!=null&&current.peer.isConnected()&&current.peer.isConnectionEstablished();}
+    static boolean pairKnown(){LocalAdb current=instance;return current!=null&&current.pairedAcknowledged;}
+    synchronized void verifyLocal()throws Exception{
+        if(command("probe")!=2000){authorized=false;throw new IOException("ADB identity not verified");}
+        peer=getAdbConnection();authorized=true;pairedAcknowledged=true;
+    }
     @Override protected PrivateKey getPrivateKey(){return key;}
     @Override protected Certificate getCertificate(){return certificate;}
     @Override protected String getDeviceName(){return "CallGuard";}
@@ -30,16 +36,16 @@ final class LocalAdb extends AbsAdbConnectionManager {
         if(port<1||port>65535)throw new IllegalArgumentException();
         if(Build.VERSION.SDK_INT<30)throw new IllegalStateException();
         if(code==null||!code.matches("[0-9]{6}"))throw new IllegalArgumentException();
-        return pair("127.0.0.1",port,code);
+        boolean result=pair("127.0.0.1",port,code);if(result)pairedAcknowledged=true;return result;
     }
     synchronized void connectLocal(int port)throws Exception{
         if(port<1||port>65535)throw new IllegalArgumentException();
-        authorized=false;disconnect();
+        authorized=false;peer=null;disconnect();
         try {
             if(!connect("127.0.0.1",port))throw new IOException("ADB connect failed");
             if(command("probe")!=2000)throw new IOException("Unexpected ADB identity");
-        }catch(Exception ex){disconnect();throw ex;}
-        authorized=true;
+        }catch(Exception ex){if(ex instanceof io.github.muntashirakon.adb.AdbPairingRequiredException||ex instanceof io.github.muntashirakon.adb.AdbAuthenticationFailedException)pairedAcknowledged=false;disconnect();throw ex;}
+        peer=getAdbConnection();authorized=true;pairedAcknowledged=true;
         context.getSharedPreferences("local-adb",0).edit().putInt("port",port).apply();
     }
     synchronized int command(String...args)throws Exception{
@@ -60,5 +66,5 @@ final class LocalAdb extends AbsAdbConnectionManager {
         }catch(Exception ex){authorized=false;throw ex;}finally{deadline.cancel(false);}
     }
     // Do not call AbsAdbConnectionManager.close(): this device identity must survive reconnection.
-    synchronized void disconnectLocal()throws IOException{authorized=false;disconnect();}
+    synchronized void disconnectLocal()throws IOException{authorized=false;peer=null;disconnect();}
 }
