@@ -229,7 +229,20 @@ public final class MainActivity extends Activity {
         scheduleCard();
         LinearLayout backup=card();backup.addView(button("Yedekleme ve geri yükleme    ›",true,()->{backupPage=true;render();}));gap(backup,7);backup.addView(text("Hesap · CallGuard bulutu · Google Drive",12,MUTED,false));
         diagnosticsCard();
-        LinearLayout about=card();about.addView(text("Program hakkında",17,INK,true));gap(about,16);TextView sig=text("Call Guard by AC",25,GREEN,true);sig.setGravity(Gravity.CENTER);about.addView(sig);gap(about,4);TextView version=text("Sürüm "+BuildConfig.VERSION_NAME,12,MUTED,false);version.setGravity(Gravity.CENTER);about.addView(version);gap(about,12);TextView disclaimer=text("WhatsApp veya Meta ile bağlantılı değildir.",11,MUTED,false);disclaimer.setGravity(Gravity.CENTER);about.addView(disclaimer);
+        LinearLayout about=card();about.addView(text("Program hakkında",17,INK,true));gap(about,16);TextView sig=text("Call Guard by AC",25,GREEN,true);sig.setGravity(Gravity.CENTER);about.addView(sig);gap(about,4);TextView version=text("Sürüm "+BuildConfig.VERSION_NAME,12,MUTED,false);version.setGravity(Gravity.CENTER);about.addView(version);gap(about,12);TextView disclaimer=text("WhatsApp veya Meta ile bağlantılı değildir.",11,MUTED,false);disclaimer.setGravity(Gravity.CENTER);about.addView(disclaimer);gap(about,10);about.addView(button("Açık kaynak lisansları",false,this::openSourceLicenses));
+    }
+    private void openSourceLicenses(){
+        try{
+            StringBuilder content=new StringBuilder();
+            for(String file:new String[]{"NOTICE.md","Apache-2.0","BSD-3-Clause","MIT"}){
+                try(java.io.InputStream input=getAssets().open("callguard-adb/"+file);java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream()){
+                    byte[] buffer=new byte[2048];int count;while((count=input.read(buffer))!=-1)bytes.write(buffer,0,count);
+                    content.append(bytes.toString("UTF-8")).append("\n\n");
+                }
+            }
+            LinearLayout panel=column();panel.setPadding(dp(18),dp(8),dp(18),dp(12));panel.addView(text(content.toString(),12,INK,false));ScrollView scroller=new ScrollView(this);scroller.addView(panel);
+            new AlertDialog.Builder(this).setTitle("Açık kaynak lisansları").setView(scroller).setNegativeButton("Kapat",null).show();
+        }catch(java.io.IOException ex){toast("Lisans metni açılamadı.");}
     }
     private void carSilenceCard(){
         LinearLayout card=card();card.addView(text("Araç sessizliği · CallGuard ADB",17,INK,true));gap(card,8);

@@ -5,7 +5,6 @@ android {
     defaultConfig { minSdk 26 }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     testOptions { unitTests.returnDefaultValues = true }
-    lint { abortOnError false }
 }
 dependencies {
     testImplementation 'junit:junit:4.13.2'
@@ -13,3 +12,12 @@ dependencies {
     implementation 'org.bouncycastle:bcprov-jdk15to18:1.84'
     implementation 'org.bouncycastle:bctls-jdk15to18:1.84'
 }
+
+// Carry the original copyright/license notices inside every distributed APK/AAB.
+def notices = tasks.register('prepareAdbNotices', Sync) {
+    from('LICENSES') { into 'callguard-adb' }
+    from('NOTICE.md') { into 'callguard-adb' }
+    into layout.buildDirectory.dir('generated/adb-notices')
+}
+android.sourceSets.main.assets.srcDir(layout.buildDirectory.dir('generated/adb-notices'))
+tasks.named('preBuild').configure { dependsOn(notices) }
