@@ -74,7 +74,7 @@ final class CarSilence implements AutoCloseable {
         if(!ready()){tell("Shizuku’yu başlat ve CallGuard için izin ver. Araç ayarı değişmedi; varsa geri yükleme kaydı korundu.");return;}
         busy=true;verified="";update();
         Runnable execute=()->{final ICarProfile service=remote;worker.execute(()->{
-            String error=null;try{if(service==null)throw new IllegalStateException("Shizuku servisi bağlı değil.");job.run(service);}catch(Exception ex){error=ex instanceof RemoteException?"Bluetooth işlemi doğrulanamadı. Shizuku’yu ve Bluetooth’u kontrol et; varsa geri yükleme kaydı korundu.":ex.getMessage();}
+            String error=null;try{if(service==null)throw new IllegalStateException("Shizuku servisi bağlı değil.");job.run(service);}catch(Exception ex){error=CarErrors.describe(ex);CallDiagnostics.record(context,"ARAC_KONTROL_HATASI: "+ex.getClass().getSimpleName());}
             final String failure=error;main.post(()->{busy=false;if(failure!=null)tell(failure);update();if(closed)disconnect();});
         });};
         if(remote!=null&&remote.asBinder().isBinderAlive()){execute.run();return;}
@@ -83,7 +83,15 @@ final class CarSilence implements AutoCloseable {
         catch(RuntimeException ex){waiting=null;busy=false;tell("Shizuku servisi başlatılamadı.");update();}
     }
     private CarSilencePolicy.Backend backend(ICarProfile service){return new CarSilencePolicy.Backend(){public int read(String address)throws Exception{return service.readPolicy(address);}public boolean write(String address,int policy)throws Exception{return service.writePolicy(address,policy);}};}
-    void list(Consumer<JSONArray> result){run(service->{JSONArray devices=new JSONArray(service.pairedDevices());main.post(()->{if(!closed)result.accept(devices);});});}
+    void list(Consumer<JSONArray> result){
+        if(closed)return;if(busy){tell("Önce devam eden işlemin bitmesini bekle.");return;}
+        busy=true;update();worker.execute(()->{
+            JSONArray devices=null;String error=null;
+            try{devices=CarDevices.load(context);}catch(Exception ex){error=CarErrors.describe(ex);CallDiagnostics.record(context,"ARAC_LISTE_HATASI: "+ex.getClass().getSimpleName());}
+            final JSONArray found=devices;final String failure=error;
+            main.post(()->{busy=false;update();if(!closed){if(failure!=null)tell(failure);else if(found!=null)result.accept(found);}if(closed)disconnect();});
+        });
+    }
     void enable(String address,String name){run(service->{CarSilencePolicy.enable(backend(service),journal,address,name);main.post(()->{verified="Görüşme profili kapalı · "+name;tell("Araç görüşme profili kapatıldı. Müzik profili değiştirilmedi.");});});}
     void restore(){run(service->{CarSilencePolicy.restore(backend(service),journal);main.post(()->{verified="Kapalı · önceki görüşme ayarı geri yüklendi";tell("Önceki görüşme ayarı geri yüklendi. Gerekirse araçtan yeniden bağlan.");});});}
     void inspect(){run(service->{CarSilencePolicy.Saved value=journal.load();String status="Kapalı · geri yükleme kaydı yok";if(value!=null){int policy=service.readPolicy(value.address);int state=service.connectionState(value.address);status=(policy==0?"Görüşme profili kapalı":policy==100?"Görüşme profili açık":"Görüşme ayarı belirsiz")+" · "+value.name+"\nHFP bağlantısı: "+(state==0?"kesik":state==1?"bağlanıyor":state==2?"bağlı":"kesiliyor")+" · geri yükleme kaydı saklanıyor";}final String found=status;main.post(()->verified=found);});}

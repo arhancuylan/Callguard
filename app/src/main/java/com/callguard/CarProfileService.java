@@ -6,7 +6,6 @@ import android.content.Context;
 import android.os.RemoteException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.json.*;
 
 /** Shizuku user service. Only one paired device's HFP policy; no shell commands or audio routing. */
 @SuppressLint("MissingPermission") // Executes under the explicitly authorized Shizuku shell/root identity.
@@ -52,13 +51,6 @@ public final class CarProfileService extends ICarProfile.Stub {
         return device;
     }
     private RemoteException failed(){return new RemoteException("Shizuku Bluetooth işlemi desteklenmedi. Bluetooth açık mı ve Shizuku izni var mı kontrol et.");}
-    @Override public String pairedDevices()throws RemoteException{
-        try{
-            BluetoothHeadset proxy=profile();JSONArray devices=new JSONArray();
-            for(BluetoothDevice device:adapter.getBondedDevices())devices.put(new JSONObject().put("address",device.getAddress()).put("name",device.getName()==null?"Bluetooth cihazı":device.getName()).put("state",proxy.getConnectionState(device)));
-            return devices.toString();
-        }catch(Exception ex){throw failed();}
-    }
     @Override public int readPolicy(String address)throws RemoteException{
         try{BluetoothHeadset proxy=profile();return (Integer)BluetoothHeadset.class.getMethod("getConnectionPolicy",BluetoothDevice.class).invoke(proxy,device(address));}
         catch(Exception ex){throw failed();}

@@ -1,8 +1,9 @@
-CallGuard 1.1.15-preview · Ana ekran kartlarından hızlı erişim
+CallGuard 1.1.16-preview · Araç seçme listesindeki null hatasını giderme
 
-- İzin verilen kişi kartına dokununca beyaz liste açılır. Kara liste modunda aynı kart kara listeye gider. Önceki kişi araması temizlenir ve liste baştan açılır.
-- Bugünkü reddetme isteği kartı yalnızca bugünün reddetme isteği kayıtlarını gösteren geçmiş ekranını açar. Sayaç ve liste aynı gün sınırlarını ve durum filtresini kullanır.
-- Tüm arama geçmişini göster düğmesi veya Geçmiş alt sekmesiyle normal geçmişe dönülür. Kayıt üzerinden beyaz/kara listeye ekleme çalışmaya devam eder.
-- Filtreli ekranda geçmiş silme düğmesi tüm geçmişi sildiğini açıkça belirtir; mevcut onay penceresi korunur. Boş durum metni bugüne özeldir.
+- Eşleşmiş cihaz listesi artık Shizuku’dan nullable JSON metni olarak alınmaz. Android Bluetooth API’si normal uygulama sürecinde kullanılır; Shizuku yalnızca görüşme profilini kontrol eder.
+- Android 12+ için Yakındaki cihazlar / BLUETOOTH_CONNECT izni, araç listesi açılırken açıklamayla istenir. Eski Android için BLUETOOTH izni API 30 ile sınırlıdır. Yeni cihaz taraması veya konum izni eklenmez.
+- Adsız, eksik veya yinelenmiş cihaz kayıtları güvenli işlenir. Boş liste ile liste okuma hatası birbirinden ayrılır.
+- String.length gibi teknik hata mesajları doğrudan kullanıcıya gösterilmez. Teknik kayıtta yalnızca işlem aşaması ve hata sınıfı tutulur; cihaz adı/adresi yazılmaz. Geri yükleme kaydı hata halinde korunur.
+- Mevcut araç profili seçimi/değişikliği, önceki ayarı geri alma ve Shizuku kurulum yardımcısı korunur.
 
-Ödeme kapalıdır. Kısa birim testleri, lint, derleme ve imza kontrolleri çalıştırılır. Uzun emülatör testi yapılmaz.
+Regresyon birim testleri, lint, APK/AAB derleme ve imza kontrolleri çalıştırılır. Ekran görüntüsündeki hatanın tam yığını elde olmadığı için uzaktaki cihazda kesin kaynak doğrulanamadı; hataya açık liste taşıma yolu kaldırıldı. Gerçek Samsung Bluetooth/araç işlemi telefonda tekrar denenmelidir. Ödeme kapalıdır.

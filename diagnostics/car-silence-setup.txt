@@ -22,3 +22,6 @@ Kullanılan entegrasyon UserService ve HEADSET bağlantı politikası API'leridi
 
 Doğrulama:
 Saf politika testleri eski değerin korunması, yazma öncesi günlük, başarısız RPC sonrası kayıt tutma, yeniden deneme, başka cihazı etkilememe, önceden kapalı ve bilinmeyen politikalarda değişiklik yapmama senaryolarını kapsar. Gerçek Shizuku, Samsung Bluetooth yığını ve Fiat multimedya üzerinde profil değişikliği bu platformda doğrulanamaz; özellik deneysel olarak sunulur.
+
+1.1.16 güncellemesi:
+Eşleşmiş cihazlar artık CallGuard’ın normal Android Bluetooth API’si üzerinden listelenir. Android 12+ cihazlarda ilk Araç seç işleminde Yakındaki cihazlar izni gerekir. Shizuku listeden cihaz okumak için kullanılmaz; yalnızca seçilen cihazın görüşme politikası için gerekir. Tarama ve konum izni kullanılmaz. Teknik hata metni yerine eyleme dönük açıklama gösterilir.

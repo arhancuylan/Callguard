@@ -6,7 +6,7 @@ ns = '{http://schemas.android.com/apk/res/android}'
 for path in root.glob('app/src/main/**/*.xml'):
     ET.parse(path)
 manifest = ET.parse(root / 'app/src/main/AndroidManifest.xml').getroot()
-assert {p.attrib[ns+'name'] for p in manifest.findall('uses-permission')} == {'android.permission.READ_CONTACTS','android.permission.INTERNET','android.permission.POST_NOTIFICATIONS','com.android.vending.BILLING','moe.shizuku.manager.permission.API_V23'}
+assert {p.attrib[ns+'name'] for p in manifest.findall('uses-permission')} == {'android.permission.READ_CONTACTS','android.permission.INTERNET','android.permission.POST_NOTIFICATIONS','com.android.vending.BILLING','moe.shizuku.manager.permission.API_V23','android.permission.BLUETOOTH','android.permission.BLUETOOTH_CONNECT'}
 app = manifest.find('application')
 assert app.attrib[ns+'allowBackup'] == 'false'
 for element in list(app):
