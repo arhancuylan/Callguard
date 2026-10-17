@@ -1,9 +1,11 @@
-CallGuard 1.1.6-preview · Google Play hazırlığı
+CallGuard 1.1.7-preview · Görüntülü çağrı algılama uyumluluğu
 
-- Android 16 / API 36 hedefi; AGP 8.9.1 ve Gradle 8.11.1.
-- Bildirim erişimi açıklaması arka plan kullanımını, işlenen verileri ve isteğe bağlı yedeklemeyi açıklar.
-- Mağaza metni, veri güvenliği taslağı, gizlilik şablonu ve kişisel Play hesabı kurulum rehberi hazırlanmıştır.
-- Önizlemede mevcut Google/e-posta/Drive ve arama kontrolü korunur; ödeme hâlâ kapalıdır.
-- Ayrı, gizli upload key ile manuel Play AAB hazırlama iş akışı eklendi. Mevcut önizleme anahtarı üretim imza anahtarı değildir.
+- Referans Call Blocker APK'sının talimat dökümü yeniden incelendi: sesli ve görüntülü reddetme aynı bildirim PendingIntent yolunu kullanır. Ayrı Telecom/Bluetooth/video protokolü bulunmadı.
+- Native CallStyle alanları eksik grup görüntülü çağrı bildirimleri, pozitif video kanıtı ve hem Reddet hem Yanıtla eylemi varsa desteklenir.
+- Büyük metin, alt metin ve metin satırları da ses/video algılamasında değerlendirilir.
+- Görüntülü yanıtlama düğmesi etiketleri desteklenir. Native gelen CallStyle'da WhatsApp'a ait decline/answer PendingIntent alanları, düğme etiketi yerine güvenli kanıt olarak kullanılabilir.
+- Devam eden/aramayı tarama bildirimleri reddedilmez. Rastgele ilk eyleme basılmaz.
+- Ayarlar > Çağrı tanılaması: yalnızca cihazda tutulan son 120 teknik olay; isim, numara, hesap ve mesaj içeriği yok. Kayıt kullanıcı tarafından kopyalanabilir veya temizlenebilir.
+- Google/e-posta/Drive yedekleme korunur. Ticari kilit ve ödeme kapalıdır.
 
-Bu GitHub AAB'si Play Console'a üretim yayını yapılmış anlamına gelmez. Yasal bilgiler ve gizlilik URL'si, Play App Signing/OAuth, satın alma doğrulaması, inceleme erişimi ve gerekli kapalı test tamamlanmadan üretim yayını yapılmaz. Gerçek Android 16 arama testi kullanıcı cihazında yapılacaktır.
+Bu bir uyumluluk düzeltmesidir; kullanıcının gerçek görüntülü çağrı bildiriminin içeriği henüz yakalanmadığından cihazda kesin çözüm doğrulanmış değildir. Yeni sürümde sesli ve görüntülü çağrı ayrı test edilecek; hata sürerse yerel teknik kayıt ile kesin neden belirlenecektir. Uzun emülatör testleri çalıştırılmaz.

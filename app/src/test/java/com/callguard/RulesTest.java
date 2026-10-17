@@ -7,6 +7,12 @@ public class RulesTest {
     private Rules.Incoming call(boolean video){return Rules.incoming("com.whatsapp","call",true,"",1,video,actions);}
     @Test public void capturedTurkishSummaryVoiceIsSupported(){assertEquals(0,call(false).declineIndex);assertEquals(Rules.Media.VOICE,call(false).media);}
     @Test public void incomingVideoSummaryIsSupported(){assertEquals(Rules.Media.VIDEO,call(true).media);}
+    @Test public void legacyVideoSummaryWithBothActionsIsSupported(){assertEquals(Rules.Media.VIDEO,Rules.incoming("com.whatsapp","call",true,"Görüntülü arama",0,null,actions).media);}
+    @Test public void videoAnswerProvidesMediaWhenBodyIsEmpty(){assertEquals(Rules.Media.VIDEO,Rules.incoming("com.whatsapp","call",true,"",0,null,Arrays.asList("Reddet","Görüntülü yanıtla")).media);}
+    @Test public void videoSummaryWithoutIncomingActionsIsIgnored(){assertNull(Rules.incoming("com.whatsapp","call",true,"Görüntülü arama",0,null,Arrays.asList("Geri ara")));assertNull(Rules.incoming("com.whatsapp","call",true,"Görüntülü arama",0,null,Arrays.asList("Reddet")));}
+    @Test public void videoAnswerActionIsSupported(){assertEquals(Rules.Media.VIDEO,Rules.incoming("com.whatsapp","call",false,"Görüntülü arama",0,null,Arrays.asList("Reddet","Görüntülü yanıtla")).media);}
+    @Test public void screeningAndOngoingVideoRemainIgnored(){for(int type:new int[]{2,3})assertNull(Rules.incoming("com.whatsapp","call",true,"Görüntülü arama",type,true,actions));}
+    @Test public void diagnosticReasonDescribesMissingEvidence(){assertEquals("SES_VIDEO_BILGISI_YOK",Rules.analyze("com.whatsapp","call",false,"",0,null,actions).reason);}
     @Test public void businessIsSupported(){assertNotNull(Rules.incoming("com.whatsapp.w4b","call",false,"Sesli arama",0,null,actions));}
     @Test public void ongoingAndScreeningAreNeverRejected(){for(int type:new int[]{2,3})assertNull(Rules.incoming("com.whatsapp","call",false,"Sesli arama",type,false,actions));}
     @Test public void nonCallAndOtherOwnersAreIgnored(){assertNull(Rules.incoming("other","call",false,"Sesli arama",1,false,actions));assertNull(Rules.incoming("com.whatsapp","msg",false,"Sesli arama",1,false,actions));}

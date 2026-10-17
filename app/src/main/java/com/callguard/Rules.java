@@ -25,33 +25,47 @@ public final class Rules {
         return value;
     }
     public static boolean decline(String value) {
-        return Arrays.asList("reddet", "aramayı reddet", "aramayi reddet", "cagrıyı reddet", "cagriyi reddet", "decline", "decline call", "reject", "reject call").contains(label(value));
+        return Arrays.asList("reddet", "aramayı reddet", "aramayi reddet", "cagrıyı reddet", "cagriyi reddet", "decline", "decline call", "reject", "reject call", "goruntulu aramayi reddet", "decline video call", "reject video call").contains(label(value));
     }
     public static boolean answer(String value) {
-        return Arrays.asList("yanıtla", "yanitla", "cevapla", "aramayı yanıtla", "aramayi yanitla", "answer", "answer call", "accept", "accept call").contains(label(value));
+        return Arrays.asList("yanıtla", "yanitla", "cevapla", "aramayı yanıtla", "aramayi yanitla", "answer", "answer call", "accept", "accept call", "goruntulu yanitla", "goruntulu aramayi yanitla", "goruntulu aramayi cevapla", "answer video call", "accept video call", "video answer", "goruntulu cevapla", "goruntulu olarak yanitla", "videolu yanitla", "videolu cevapla").contains(label(value));
     }
     public static final class Incoming {
         public final int declineIndex;
         public final Media media;
         Incoming(int index, Media media) { this.declineIndex = index; this.media = media; }
     }
-    public static Incoming incoming(String owner, String category, boolean summary, String text,
-                                     int callType, Boolean isVideo, List<String> actions) {
-        if (!("com.whatsapp".equals(owner) || "com.whatsapp.w4b".equals(owner)) || !"call".equals(category)) return null;
-        if (callType == 2 || callType == 3) return null;
-        boolean typed = callType == 1 && isVideo != null;
-        if (summary && !typed) return null;
-        String body = label(text);
-        boolean video = Boolean.TRUE.equals(isVideo) || body.contains("goruntulu") || body.contains("video") || body.contains("📹") || body.contains("🎥");
-        boolean voice = Boolean.FALSE.equals(isVideo) && callType == 1 || body.contains("sesli arama") || body.contains("voice call") || body.contains("audio call");
-        if (!video && !voice) return null;
-        int decline = -1; boolean answer = false;
-        for (int i = 0; i < actions.size(); i++) {
-            if (decline(actions.get(i))) { if (decline != -1) return null; decline = i; }
-            answer |= answer(actions.get(i));
+    public static final class Analysis {
+        public final Incoming incoming;
+        public final String reason;
+        Analysis(Incoming incoming,String reason){this.incoming=incoming;this.reason=reason;}
+    }
+    private static Analysis no(String reason){return new Analysis(null,reason);}
+    public static boolean videoText(String text){String value=label(text);return value.contains("goruntulu")||value.contains("video")||value.contains("📹")||value.contains("🎥");}
+    public static boolean voiceText(String text){String value=label(text);return value.contains("sesli arama")||value.contains("voice call")||value.contains("audio call");}
+    public static Incoming incoming(String owner,String category,boolean summary,String text,int callType,Boolean isVideo,List<String> actions){
+        return analyze(owner,category,summary,text,callType,isVideo,actions).incoming;
+    }
+    public static Analysis analyze(String owner,String category,boolean summary,String text,int callType,Boolean isVideo,List<String> actions){
+        if(!("com.whatsapp".equals(owner)||"com.whatsapp.w4b".equals(owner)))return no("DESTEKLENMEYEN_UYGULAMA");
+        if(!"call".equals(category))return no("CAGRI_KATEGORISI_YOK");
+        if(callType==2||callType==3)return no("GELEN_CAGRI_DEGIL");
+        boolean video=Boolean.TRUE.equals(isVideo)||videoText(text);
+        boolean voice=Boolean.FALSE.equals(isVideo)&&callType==1||voiceText(text);
+        for(String action:actions)if(answer(action)&&videoText(action))video=true;
+        if(!video&&!voice)return no("SES_VIDEO_BILGISI_YOK");
+        int decline=-1;boolean answer=false;
+        for(int i=0;i<actions.size();i++){
+            if(decline(actions.get(i))){if(decline!=-1)return no("BIRDEN_FAZLA_REDDET_EYLEMI");decline=i;}
+            answer|=answer(actions.get(i));
         }
-        if (decline == -1 || (!answer && callType != 1)) return null;
-        return new Incoming(decline, video ? Media.VIDEO : Media.VOICE);
+        if(decline<0)return no("REDDET_EYLEMI_TANINMADI");
+        if(!answer&&callType!=1)return no("YANITLA_KANITI_YOK");
+        boolean typed=callType==1&&isVideo!=null;
+        // Legacy video summaries can omit CallStyle extras. Require positive video
+        // evidence AND both explicit incoming actions before accepting that format.
+        if(summary&&!typed&&!(video&&answer))return no("GRUP_BILDIRIMI_KANITI_YETERSIZ");
+        return new Analysis(new Incoming(decline,video?Media.VIDEO:Media.VOICE),"GELEN_CAGRI_TANINDI");
     }
     public static boolean selected(Media selection, Media call) { return selection == Media.BOTH || selection == call; }
     public static boolean block(Mode mode, boolean listed) {

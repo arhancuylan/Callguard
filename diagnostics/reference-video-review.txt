@@ -1,0 +1,8 @@
+17 Ekim 2026 — Kullanıcının sağladığı Call Blocker: Voice & Video APK'sı
+
+Kaynak: reference-blocker-20261016-210453.zip içindeki com.versionapp.blockcall base.apk.
+İnceleme: com.versionapp.blockcall.SerNoti için decompile çıktısı ve SerNoti.instructions.java talimat dökümü; decompile uyarıları nedeniyle kontrol akışı talimatlarla karşılaştırıldı.
+Bulgu: NotificationListenerService, WhatsApp/Business paket filtresi ve call kategorisi kullanılır. Video ayrımı android.text içindeki U+1F4F9 ile yapılır; medya tercihi ayrı ayarlanır. Her iki medya türünde de aynı notification actions[0].actionIntent.send çağrısı kullanılır. Ayrı video reddetme veya Bluetooth önleme protokolü görülmedi. Referansın grup bildirimi/CallStyle metadata şartı yoktur.
+CallGuard farkı: grup bildirimi için eksiksiz CallStyle alanlarına bağımlılık, yalnızca EXTRA_TEXT okunması ve video yanıt etiketlerinin tanınmaması desteklenen biçimleri daraltıyordu.
+Uygulama kararı: referans kaynak kodu kopyalanmadı. Bağımsız uyumluluk mantığı eklendi; pozitif gelen/video kanıtı, doğrulanmış WhatsApp reddetme eylemi ve devam eden çağrı koruması sürdürüldü. İlk eyleme körlemesine basılmadı.
+Sınır: bu statik inceleme, S24+'ta kaçırılan görüntülü çağrının hangi koşulda takıldığını tek başına ispatlamaz. İsim ve numara içermeyen yerel karar günlüğü eklenmiştir.

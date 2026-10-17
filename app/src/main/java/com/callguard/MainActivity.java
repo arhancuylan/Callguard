@@ -217,6 +217,7 @@ public final class MainActivity extends Activity {
         scheduleCard();
         accountCard();
         driveCard();
+        diagnosticsCard();
         LinearLayout type=card();type.addView(text("Arama türü",17,INK,true));gap(type,12);segmented(type,new String[]{"Sesli","Görüntülü","Her ikisi"},store.effectiveMedia().ordinal(),i->store.setting("media",Rules.Media.values()[i].name()));gap(type,8);type.addView(text("Kurallar seçtiğin arama türüne uygulanır.",12,MUTED,false));
         LinearLayout action=card();action.addView(text("İşlem modu",17,INK,true));gap(action,8);radio(action,"Otomatik reddet",!store.recordOnly(),()->store.setting("recordOnly",false));radio(action,"Yalnızca kaydet",store.recordOnly(),()->store.setting("recordOnly",true));gap(action,8);action.addView(text("Yalnızca kaydet modu çağrıyı susturmaz.",12,MUTED,false));
         LinearLayout about=card();about.addView(text("Program hakkında",17,INK,true));gap(about,16);TextView sig=text("Call Guard by AC",25,GREEN,true);sig.setGravity(Gravity.CENTER);about.addView(sig);gap(about,4);TextView version=text("Sürüm "+BuildConfig.VERSION_NAME,12,MUTED,false);version.setGravity(Gravity.CENTER);about.addView(version);gap(about,12);TextView disclaimer=text("WhatsApp veya Meta ile bağlantılı değildir.",11,MUTED,false);disclaimer.setGravity(Gravity.CENTER);about.addView(disclaimer);
@@ -291,6 +292,16 @@ public final class MainActivity extends Activity {
                 return new org.json.JSONObject();
             },done->{render();toast("Drive yedeği geri yüklendi. Koruma ve otomatik bulut yedeklemesini kontrol et.");})).show();
         }).setNegativeButton("Kapat",null).show();
+    }
+    private void diagnosticsCard(){
+        LinearLayout card=card();card.addView(text("Çağrı tanılaması",17,INK,true));gap(card,8);
+        card.addView(text("Algılanmayan çağrıların teknik nedenini gösterir. Kayıtlar yalnızca bu cihazda tutulur; isim, numara, mesaj içeriği veya hesap bilgisi içermez.",12,MUTED,false));gap(card,10);
+        card.addView(button("Teknik kaydı göster / kopyala",false,()->{
+            String report=CallDiagnostics.report(this)+"\nKoruma="+store.enabled()+", bildirimIzni="+access()+", baglanti="+CallNotificationService.connected+", secim="+store.effectiveMedia()+", mod="+store.effectiveMode()+", zaman="+store.scheduleActive()+", yalnizKayit="+store.recordOnly();
+            TextView details=text(report,12,INK,false);details.setTextIsSelectable(true);details.setPadding(dp(16),dp(12),dp(16),dp(12));
+            ScrollView panel=new ScrollView(this);panel.addView(details);
+            new AlertDialog.Builder(this).setTitle("Çağrı tanılaması").setView(panel).setNegativeButton("Kapat",null).setNeutralButton("Temizle",(d,w)->{CallDiagnostics.clear(this);toast("Yerel teknik kayıt temizlendi.");}).setPositiveButton("Kopyala",(d,w)->{android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);clipboard.setPrimaryClip(ClipData.newPlainText("CallGuard teknik kayıt",report));toast("İsim ve numara içermeyen teknik kayıt kopyalandı.");}).show();
+        }));
     }
     private void acceptSession(org.json.JSONObject result){
         try{SessionVault.save(this,result.getString("token"),result.getString("userId"),result.getString("email"));CloudSync.periodic(this);CloudSync.enqueue(this);render();toast("Giriş yapıldı. Mevcut bulut yedeğini geri yükleyebilirsin.");}catch(Exception ex){toast("Oturum güvenli biçimde kaydedilemedi.");}
