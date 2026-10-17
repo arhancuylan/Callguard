@@ -1,0 +1,83 @@
+name: Prepare Play AAB with protected upload key
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: New unused Play versionCode (120 or higher)
+        type: string
+        default: '120'
+        required: true
+      version_name:
+        description: Play internal test version name
+        type: string
+        default: '1.2.0-internal'
+        required: true
+      commercial:
+        description: Enable paid trial only after live Play billing and privacy verification
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CALLGUARD_KEYSTORE: .private-signing/upload.keystore
+      CALLGUARD_STORE_PASSWORD: ${{ secrets.CALLGUARD_UPLOAD_STORE_PASSWORD }}
+      CALLGUARD_KEY_ALIAS: ${{ secrets.CALLGUARD_UPLOAD_KEY_ALIAS }}
+      CALLGUARD_KEY_PASSWORD: ${{ secrets.CALLGUARD_UPLOAD_KEY_PASSWORD }}
+      CALLGUARD_API_BASE: https://mktech.net.tr/callguard
+      CALLGUARD_GOOGLE_CLIENT_ID: 169220010049-rgo9tkv3usis6sl7orp68v51r8ms6viv.apps.googleusercontent.com
+      CALLGUARD_COMMERCIAL: ${{ inputs.commercial && 'true' || 'false' }}
+      PLAY_VERSION_CODE: ${{ inputs.version_code }}
+      PLAY_VERSION_NAME: ${{ inputs.version_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate upload settings and commercial readiness
+        env:
+          UPLOAD_KEY_BASE64: ${{ secrets.CALLGUARD_UPLOAD_KEYSTORE_BASE64 }}
+          COMMERCE_VERIFIED: ${{ vars.CALLGUARD_PLAY_COMMERCE_VERIFIED }}
+        shell: bash
+        run: |
+          test -n "$UPLOAD_KEY_BASE64"
+          test -n "$CALLGUARD_STORE_PASSWORD"
+          test -n "$CALLGUARD_KEY_ALIAS"
+          test -n "$CALLGUARD_KEY_PASSWORD"
+          [[ "$PLAY_VERSION_CODE" =~ ^[0-9]+$ ]]
+          test "$PLAY_VERSION_CODE" -ge 120
+          if [ "$CALLGUARD_COMMERCIAL" = true ]; then
+            test "$COMMERCE_VERIFIED" = true
+            python -c 'import json; d=json.load(open("distribution/play/metadata.json")); assert d["privacyPolicyLiveVerified"] is True; assert not d["pending"], "Production readiness items remain"'
+          fi
+          mkdir -p .private-signing
+          printf '%s' "$UPLOAD_KEY_BASE64" | base64 --decode > "$CALLGUARD_KEYSTORE"
+          chmod 600 "$CALLGUARD_KEYSTORE"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Unit checks, lint and signed AAB
+        run: |
+          python tools/check_structure.py
+          gradle --no-daemon :app:testDebugUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease -PCALLGUARD_VERSION_CODE="$PLAY_VERSION_CODE" -PCALLGUARD_VERSION_NAME="$PLAY_VERSION_NAME"
+          python tools/play-preflight.py app/build/outputs/apk/release/app-release.apk
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab
+          mkdir -p play-output
+          cp app/build/outputs/bundle/release/app-release.aab play-output/CallGuard-Play-internal.aab
+          sha256sum play-output/CallGuard-Play-internal.aab > play-output/CallGuard-Play-internal.aab.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CallGuard-Play-internal-AAB
+          path: play-output/
+          retention-days: 30
+      - name: Remove temporary upload key
+        if: always()
+        run: rm -rf .private-signing

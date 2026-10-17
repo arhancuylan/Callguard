@@ -1,0 +1,64 @@
+{
+  "status": "DRAFT - complete against actual production SDKs, hosting and Play form before submission",
+  "collected": [
+    {
+      "type": "Personal info / Email address, User IDs",
+      "data": "CallGuard account email, stable account ID; SMTP verification and account management",
+      "required": "only if account used; production trial may require account",
+      "purposes": [
+        "Account management",
+        "App functionality"
+      ]
+    },
+    {
+      "type": "Contacts",
+      "data": "Only selected list names/numbers when cloud backup chosen; full phone contacts are not uploaded",
+      "optional": true,
+      "purposes": [
+        "App functionality"
+      ]
+    },
+    {
+      "type": "App activity / Other user-generated content; confirm current Play form for call history",
+      "data": "Up to 500 WhatsApp call records (caller identity,time,voice/video,policy result) and user settings/profiles in optional backup",
+      "optional": true,
+      "purposes": [
+        "App functionality"
+      ]
+    },
+    {
+      "type": "Financial info / Purchase history (commercial build only)",
+      "data": "Product/purchase token, purchase state and account binding; no card details received",
+      "purposes": [
+        "App functionality",
+        "Fraud prevention, security and compliance"
+      ]
+    }
+  ],
+  "drive": "Separate user-initiated transfer to Google Drive appDataFolder. Do not assume it is exempt from collection or sharing; assess Google service-provider/user-initiated-transfer rules in current form.",
+  "thirdParties": [
+    "Turhost hosting/MySQL and mail delivery",
+    "Google identity / Play Services / Drive",
+    "Google Play Billing in paid build"
+  ],
+  "notImplemented": [
+    "Advertising",
+    "Location collection",
+    "Advertising ID permission",
+    "Contacts upload beyond selected lists",
+    "Message content collection",
+    "Microphone/camera capture",
+    "Android system call log permission",
+    "Accessibility service"
+  ],
+  "transportEncrypted": true,
+  "atRest": "Server backups use AES-GCM. Drive copies rely on Google Drive storage protection, not app-managed end-to-end encryption. Session tokens encrypted by Android Keystore; no card details.",
+  "deletion": "In-app deletion and HTTPS email-confirmed deletion request; Drive snapshots are separate and can be deleted individually. Verify retention of trial/purchase ledger and hosting/backup logs before final declaration.",
+  "mustConfirm": [
+    "Legal operator identity",
+    "Turhost server logs (IP addresses), backups, location and retention",
+    "Google SDK automatic data practices against exact versions",
+    "Whether Play form maps WhatsApp app history to app activity or messages",
+    "Google Play review access and ability to delete requested account data"
+  ]
+}

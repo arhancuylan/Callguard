@@ -1,0 +1,36 @@
+{
+  "status": "draft-not-for-production-upload",
+  "applicationId": "com.callguard.mobile",
+  "defaultLanguage": "tr-TR",
+  "appName": "CallGuard - Arama Kontrolü",
+  "category": "TOOLS",
+  "distribution": "Google Play only",
+  "supportEmail": "callguard@mktech.net.tr",
+  "website": "https://mktech.net.tr/callguard/",
+  "privacyPolicyUrl": "https://mktech.net.tr/callguard/privacy.html",
+  "privacyPolicyLiveVerified": false,
+  "accountDeletionUrl": "https://mktech.net.tr/callguard/account-deletion",
+  "monetization": {
+    "install": "free",
+    "trialDays": 7,
+    "trialTrigger": "first user-enabled protection with account",
+    "subscription": false,
+    "oneTimeProductId": "callguard_pro_lifetime",
+    "priceSource": "Play Console localized price; no hard-coded amount",
+    "commercialEnabled": false
+  },
+  "pending": [
+    "Legal operator name and retention schedule",
+    "Publish privacy policy and link it inside app",
+    "Dedicated protected upload key; Google-managed Play App Signing",
+    "Play signing SHA-1 in Google Cloud Android client",
+    "App review access and dedicated verified review account",
+    "Play one-time product, least-privilege service account and license tester purchase/restore/refund checks",
+    "Live trial after sign-in, reinstall, expiry and offline checks",
+    "Data safety review including third-party SDK declarations and hosting logs",
+    "Real device screenshots with synthetic contacts; content rating and target audience",
+    "Personal account closed test eligibility shown in Console"
+  ],
+  "developerDisplayName": "MK Tech",
+  "legalOperatorStatus": "MK Tech was provided as display name; verify legal name against Play Console identity before publishing policy"
+}

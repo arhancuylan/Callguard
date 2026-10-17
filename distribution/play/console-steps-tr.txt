@@ -1,0 +1,29 @@
+CALLGUARD PLAY CONSOLE HAZIRLIK REHBERİ — 17 Ekim 2026
+
+1. Kişisel geliştirici hesabı
+Kimlik, iletişim, cihaz doğrulaması ve gerekiyorsa satıcı/ödeme profilini Console'da tamamla. Başkasının bilgilerini kullanma. 13 Kasım 2023 sonrası açılmış kişisel hesaplarda üretim erişimi için en az 12 kişinin en az 14 gün kesintisiz katıldığı kapalı test şartını Console'dan doğrula. Dahili test bu şartın yerine geçmez.
+
+2. Uygulama oluştur
+Ad: CallGuard - Arama Kontrolü. Varsayılan dil Türkçe. Tür: Uygulama. Başlangıç fiyatı: Ücretsiz (uygulama içi satın alma sonradan). Paket kimliği: com.callguard.mobile. Kalıcı paket adını değiştirme.
+
+3. İmza
+Play App Signing'de Google tarafından oluşturulan uygulama imza anahtarını tercih et. Mevcut GitHub önizleme imzasını üretim anahtarı olarak içe aktarma. Üretim yüklemeleri için ayrı upload key ve GitHub Actions Secrets kullan; keystore'u depoya veya herkese açık önbelleğe koyma. play-upload.yml yalnızca gizli upload key ile manuel AAB hazırlar. Eski önizleme APK'sı ve Play imzası farklı olursa Play kurulumundan önce cihazdaki listeleri yedekle; gerekirse kaldırıp kur ve geri yükle.
+Play Console'daki Uygulama imzası SHA-1 değerini aynı Google Cloud projesinde ayrı Android OAuth istemcisi olarak ekle. Upload SHA-1 ile Play signing SHA-1 aynı olmak zorunda değildir. Google girişi ve Drive'ı Play'den kurulan sürümde yeniden doğrula.
+
+4. Mağaza ve politika
+listing-tr-TR.txt metni ve metadata.json taslağını kullan. Gerçek uygulama ekran görüntülerini en az iki adet hazırla; gerçek isim/numara yerine test kişileri kullan. 512x512 mağaza ikonu ve 1024x500 özellik görseli hazırla. privacy-template.html işletmeci adı ve kesin saklama süreleri doldurulmadan yayınlanmaz. Yayın URL'si /callguard/privacy.html olarak planlandı; dosya otomatik hosting'e yüklenmedi. Uygulama içine politika bağlantısı eklenmesi açık iş. data-safety-draft.json nihai form değildir. App content bölümünde reklam yok, hesap ve erişim talimatları, hedef kitle ve içerik derecelendirmesi gerçek davranışla doldurulur; puan uydurulmaz. WhatsApp/Meta ile resmi bağlantı ve Bluetooth'ta sıfır uyarı iddiası kullanılmaz.
+
+5. Test ve inceleme
+Önce dahili kanal, sonra hesabın gerektiriyorsa kapalı test. İnceleme için erişilebilir özel test hesabı ve açık izin adımları hazırla; şifreyi public depoya koyma. Gerçek WhatsApp çağrısı için ikinci telefon gerekir. Bildirim erişimi sistem ayarından kullanıcı tarafından verilir; erişilebilirlik istenmez. Üretim henüz yayınlanmaz.
+
+6. Tek ödeme ve deneme
+callguard_pro_lifetime adlı tüketilmeyen tek seferlik ürün oluştur. Ürün fiyatı Play Console'dan gelir. Yalnızca CallGuard'a yetkili Android Publisher hizmet hesabını özel sunucu dizinine koy; JSON'u APK'ya/repo'ya ekleme. Lisans test kullanıcılarıyla başarılı, iptal, bekleyen ödeme, satın almayı geri yükleme, hesap uyuşmazlığı ve iade testlerini tamamla. Sunucu doğrulaması ve acknowledge olmadan Pro verme. 7 günün ilk koruma açılışında başlamasını, hesabı yeniden kurunca sıfırlanmamasını ve süre dolunca doğru uyarıyı doğrula. Bu adımlar bitene kadar COMMERCIAL false kalır.
+
+7. Güncel teknik koşullar
+Yeni başvurular API 36 hedeflemeli. billing 8.1.0 kullanılıyor; gönderim gününde destek süresini doğrula. tools/play-preflight.py AAB/APK manifest/prod sertifika incelemesinin tamamının yerine geçmez. Native .so varsa 16KB uyumluluğu ayrıca doğrulanmadan gönderme. Güncel sürümde Java/Kotlin bağımlılıkları için .so yokluğu CI'da kontrol edilir.
+
+Kaynaklar
+https://support.google.com/googleplay/android-developer/answer/11926878
+https://support.google.com/googleplay/android-developer/answer/14151465
+https://support.google.com/googleplay/android-developer/answer/13327111
+https://support.google.com/googleplay/android-developer/answer/10144311

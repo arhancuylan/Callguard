@@ -1,0 +1,31 @@
+DURUM: Mağaza metni taslağı. Satış ve deneme paragrafı ancak ticari sürüm doğrulandıktan sonra kullanılacak.
+
+UYGULAMA ADI
+CallGuard - Arama Kontrolü
+
+KISA AÇIKLAMA
+WhatsApp sesli ve görüntülü aramalarını seçtiğin kurallarla yönet.
+
+TAM AÇIKLAMA
+Aramalarını kendi kurallarınla yönet.
+CallGuard, WhatsApp ve WhatsApp Business üzerinden gelen sesli ve görüntülü aramalar için otomatik reddetme kuralları oluşturmanı sağlar.
+
+• Tüm gelen aramaları reddet veya beyaz/ kara liste kullan.
+• Sesli, görüntülü ya da her iki arama türünü seç.
+• Rehberden kişi ve numara seç; birden fazla kişiyi listene ekle.
+• İş, uyku, toplantı ve kişisel profilleri gün ve saatlere göre düzenle.
+• Korumayı 15 dakika, 1 saat veya gün sonuna kadar duraklat.
+• Çağrı geçmişinde kararın nedenini gör; kayıttan listene kişi ekle.
+• İsteğe bağlı olarak Google veya e-posta hesabıyla CallGuard bulutuna yedekle.
+• Ayrı izin vererek Google Drive'ın uygulamaya özel alanında tarihli kopyalar sakla. Drive yedeklerini elle oluştur, geri yükle veya sil.
+
+Gizlilik ve kontrol
+Rehberinin tamamı sunucuya gönderilmez. Yedekleme için seçtiğin listeler, ayarlar ve en fazla 500 çağrı kaydı aktarılır. Mesaj bildirimleri işlenmez. Bildirim erişimini ve yedeklemeyi istediğin zaman kapatabilirsin. Hesabını uygulamadan veya web sayfamızdan silme talebi gönderebilirsin.
+
+Satış sürümünde 7 gün ücretsiz deneme
+Deneme, hesabınla korumayı ilk etkinleştirdiğinde başlar. Süre sonunda devam etmek için Google Play üzerinden tek seferlik Pro satın alması gerekir. Abonelik ve otomatik ücretlendirme yoktur. Satın alma aynı CallGuard hesabına bağlanır; fiyat ödeme öncesinde gösterilir.
+
+Bilmen gerekenler
+Bildirim erişimi gereklidir. Otomatik işlem, WhatsApp'ın çağrı bildirimindeki Reddet eylemini kullanır; uyumluluk Android, WhatsApp sürümü ve cihaz ayarlarına bağlıdır. Bağlı saat veya araçlarda kısa süreli çağrı ekranı ya da zil oluşabilir. CallGuard çağrı yanıtlamaz; izin verilen çağrıların çalmasına müdahale etmez. Ad bilgisi tek başına gelirse aynı isimli kişilerin farklı numaralarını ayırmak mümkün olmayabilir.
+
+Call Guard by AC. WhatsApp veya Meta tarafından geliştirilmemiş, desteklenmemiş veya onaylanmamıştır.

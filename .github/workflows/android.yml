@@ -34,11 +34,11 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
-          packages: platform-tools platforms;android-35 build-tools;35.0.0
+          packages: platform-tools platforms;android-35 platforms;android-36 build-tools;35.0.0 build-tools;36.0.0
           log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.11.1'
       - name: Restore the final app signing key
         id: signing
         uses: actions/cache/restore@v4
@@ -76,6 +76,7 @@ jobs:
         id: build
         run: |
           gradle --no-daemon :app:testDebugUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease || { cat app/build/intermediates/lint_intermediate_text_report/*/*/*.txt 2>/dev/null; exit 1; }
+          python tools/play-preflight.py app/build/outputs/apk/release/app-release.apk
           if [ "${{ github.event_name }}" = workflow_dispatch ] && [ "${{ inputs.run_device_tests }}" = true ]; then gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :fixture:assembleDebug; fi
       - name: Enable KVM for the emulator
         if: github.event_name == 'workflow_dispatch' && inputs.run_device_tests
@@ -123,27 +124,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         if: always() && steps.build.conclusion == 'success'
         run: |
-          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.1.5-preview.apk
-          cp app/build/outputs/bundle/release/app-release.aab CallGuard-1.1.5-preview.aab
-          sha256sum CallGuard-1.1.5-preview.apk > CallGuard-1.1.5-preview.apk.sha256
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.1.5-preview.apk
+          cp app/build/outputs/apk/release/app-release.apk CallGuard-1.1.6-preview.apk
+          cp app/build/outputs/bundle/release/app-release.aab CallGuard-1.1.6-preview.aab
+          sha256sum CallGuard-1.1.6-preview.apk > CallGuard-1.1.6-preview.apk.sha256
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose CallGuard-1.1.6-preview.apk
           gh release download v1.0.0 --pattern CallGuard-1.0.0.apk --dir previous
           signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           previous_cert=$("$signer" verify --print-certs previous/CallGuard-1.0.0.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
-          current_cert=$("$signer" verify --print-certs CallGuard-1.1.5-preview.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
+          current_cert=$("$signer" verify --print-certs CallGuard-1.1.6-preview.apk | sed -n '/Signer #1 certificate SHA-256 digest:/p')
           test -n "$previous_cert"
           test "$previous_cert" = "$current_cert"
           echo 'Update signing certificate matches version 1.0.0.' 
       - uses: actions/upload-artifact@v4
         if: always() && steps.build.conclusion == 'success'
         with:
-          name: CallGuard-1.1.5-preview
+          name: CallGuard-1.1.6-preview
           path: |
-            CallGuard-1.1.5-preview.apk
-            CallGuard-1.1.5-preview.apk.sha256
-            CallGuard-1.1.5-preview.aab
+            CallGuard-1.1.6-preview.apk
+            CallGuard-1.1.6-preview.apk.sha256
+            CallGuard-1.1.6-preview.aab
       - name: Publish APK after required checks; call integration can be validated on the phone
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v1.1.5-preview" CallGuard-1.1.5-preview.apk CallGuard-1.1.5-preview.apk.sha256 CallGuard-1.1.5-preview.aab --title "CallGuard 1.1.5-preview · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --prerelease --latest=false
+          python -m zipfile -c CallGuard-Play-Preparation.zip distribution/play tools/play-preflight.py
+          gh release create "v1.1.6-preview" CallGuard-1.1.6-preview.apk CallGuard-1.1.6-preview.apk.sha256 CallGuard-1.1.6-preview.aab CallGuard-Play-Preparation.zip --title "CallGuard 1.1.6-preview · by AC" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --prerelease --latest=false
