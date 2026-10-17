@@ -35,6 +35,10 @@ final class BackgroundProtection {
             return false;
         }
     }
+    static boolean batteryExempt(Context context){
+        PowerManager power=(PowerManager)context.getSystemService(Context.POWER_SERVICE);
+        return power!=null&&power.isIgnoringBatteryOptimizations(context.getPackageName());
+    }
     static String status(Context context){
         ActivityManager activity=(ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
         PowerManager power=(PowerManager)context.getSystemService(Context.POWER_SERVICE);
@@ -42,7 +46,7 @@ final class BackgroundProtection {
         return "Bildirim erişimi: "+(hasAccess(context)?"açık":"kapalı")
             +"\nServis: "+(CallNotificationService.connected?"bağlı":"bağlı değil")
             +"\nAndroid arka plan kısıtlaması: "+(restricted?"var; pil ayarlarını kontrol et":"bildirilmiyor")
-            +"\nPil optimizasyonu: "+(power!=null&&power.isIgnoringBatteryOptimizations(context.getPackageName())?"muaf":"standart")
+            +"\nPil optimizasyonu: "+(batteryExempt(context)?"muaf":"standart (Samsung uyku durumu değildir)")
             +"\nPil tasarrufu: "+(power!=null&&power.isPowerSaveMode()?"açık":"kapalı");
     }
     static boolean samsung(){return "samsung".equalsIgnoreCase(Build.MANUFACTURER);}

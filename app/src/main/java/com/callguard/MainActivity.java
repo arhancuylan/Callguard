@@ -215,9 +215,10 @@ public final class MainActivity extends Activity {
         gap(body,8);TextView clear=button("Geçmişi temizle",false,()->new AlertDialog.Builder(this).setTitle("Geçmiş temizlensin mi?").setMessage("Bu cihazdaki tüm arama kayıtları silinecek.").setNegativeButton("Vazgeç",null).setPositiveButton("Temizle",(d,w)->{store.clearHistory();render();}).show());clear.setEnabled(any);clear.setAlpha(any?1:0.45f);body.addView(clear);
     }
     private void historyAction(String caller,String number,String result){boolean destinationWhite=!ProtectionState.permitted(result);String label=destinationWhite?"Beyaz listeye ekle":"Kara listeye ekle";new AlertDialog.Builder(this).setTitle(caller).setItems(new String[]{label},(d,w)->{if(number.isEmpty())manual(caller.equals("Bilinmeyen numara")?"":caller,"",destinationWhite);else new AlertDialog.Builder(this).setTitle(label+"?").setMessage(caller+"\n"+number).setNegativeButton("Vazgeç",null).setPositiveButton("Ekle",(dialog,which)->{store.add(caller,number,destinationWhite);toast("Kişi "+(destinationWhite?"beyaz":"kara")+" listeye eklendi.");}).show();}).setNegativeButton("Kapat",null).show();}
-    private void settings(){heading("Her şey kontrolünde","");LinearLayout permission=card();LinearLayout r=row();r.addView(text("Bildirim erişimi",17,INK,true),new LinearLayout.LayoutParams(0,-2,1));TextView badge=text(access()?"● Etkin":"○ Kapalı",12,access()?GREEN:MUTED,true);badge.setPadding(dp(9),dp(5),dp(9),dp(5));badge.setBackground(bg(Color.rgb(222,243,224),20));r.addView(badge);permission.addView(r);gap(permission,7);permission.addView(text("Uygulamanın WhatsApp aramalarını yönetebilmesi için gereklidir.",13,MUTED,false));gap(permission,10);permission.addView(button("İzni yönet",false,this::permissionExplanation));
+    private void settings(){heading("Her şey kontrolünde","");
         LinearLayout type=card();type.addView(text("Arama türü",17,INK,true));gap(type,12);segmented(type,new String[]{"Sesli","Görüntülü","Her ikisi"},store.effectiveMedia().ordinal(),i->store.setting("media",Rules.Media.values()[i].name()));gap(type,8);type.addView(text("Kurallar seçtiğin arama türüne uygulanır.",12,MUTED,false));
         LinearLayout action=card();action.addView(text("İşlem modu",17,INK,true));gap(action,8);radio(action,"Otomatik reddet",!store.recordOnly(),()->store.setting("recordOnly",false));radio(action,"Yalnızca kaydet",store.recordOnly(),()->store.setting("recordOnly",true));gap(action,8);action.addView(text("Yalnızca kaydet modu çağrıyı susturmaz.",12,MUTED,false));
+        LinearLayout permission=card();LinearLayout r=row();r.addView(text("Bildirim erişimi",17,INK,true),new LinearLayout.LayoutParams(0,-2,1));TextView badge=text(access()?"● Etkin":"○ Kapalı",12,access()?GREEN:MUTED,true);badge.setPadding(dp(9),dp(5),dp(9),dp(5));badge.setBackground(bg(Color.rgb(222,243,224),20));r.addView(badge);permission.addView(r);gap(permission,7);permission.addView(text("Uygulamanın WhatsApp aramalarını yönetebilmesi için gereklidir.",13,MUTED,false));gap(permission,10);permission.addView(button("İzni yönet",false,this::permissionExplanation));
         backgroundCard();
         scheduleCard();
         LinearLayout backup=card();backup.addView(button("Yedekleme ve geri yükleme    ›",true,()->{backupPage=true;render();}));gap(backup,7);backup.addView(text("Hesap · CallGuard bulutu · Google Drive",12,MUTED,false));
@@ -232,11 +233,11 @@ public final class MainActivity extends Activity {
         LinearLayout panel=column();panel.setPadding(dp(22),dp(8),dp(22),dp(12));
         panel.addView(text(BackgroundProtection.status(this),13,INK,false));gap(panel,14);
         panel.addView(text("Ekranı veya son kullanılan uygulamalar listesini kapatsan da koruma normalde devam eder. Android bağlantıyı yönetir; servis koparsa yeniden bağlanma istenir. Zorla durdurduktan sonra CallGuard’ı tekrar açmalısın.",13,MUTED,false));gap(panel,14);
-        panel.addView(button("Pil ayarlarını aç",true,()->openBackgroundSettings(false)));gap(panel,8);
-        panel.addView(text("Açılan uygulama bilgilerinde Pil → Kısıtlanmamış seçeneğini kontrol et. Menü adı telefona göre değişebilir. Bu ayarlar otomatik değiştirilmez.",12,MUTED,false));gap(panel,12);
+        panel.addView(button("CallGuard pil ayarını aç",true,()->openBackgroundSettings(false)));gap(panel,8);
+        panel.addView(text("Açılan CallGuard uygulama bilgilerinde Pil → Kısıtlanmamış seçeneğini kontrol et. Kısıtlanmamış zaten seçiliyse değiştirme. Menü adı telefona göre değişebilir; bu ayar otomatik değiştirilmez.",12,MUTED,false));gap(panel,12);
         if(BackgroundProtection.samsung()){
-            panel.addView(button("Samsung uyku istisnalarını aç",false,()->openBackgroundSettings(true)));gap(panel,8);
-            panel.addView(text("Pil → Arka plan kullanım sınırları → Asla uyumayan uygulamalar listesine CallGuard’ı ekle. Uyuyan / derin uyuyan listelerinde bulunmasın. Bu üretici listesini uygulamadan doğrulayamıyoruz.",12,MUTED,false));gap(panel,12);
+            panel.addView(button("Samsung uyku listesi yardımı",false,this::samsungSleepHelp));gap(panel,8);
+            panel.addView(text("CallGuard uyku listesinde görünmeyebilir; bu tek başına bir arıza değildir. Önce yukarıdaki CallGuard pil ayarını kontrol et. Samsung’un uyku listesi üyeliğini uygulamadan doğrulayamıyoruz.",12,MUTED,false));gap(panel,12);
         }
         panel.addView(button("Servisi yeniden bağla",false,()->{
             if(!access()){permissionExplanation();return;}
@@ -245,6 +246,16 @@ public final class MainActivity extends Activity {
         }));
         ScrollView content=new ScrollView(this);content.addView(panel);
         new AlertDialog.Builder(this).setTitle("Arka planda çalışma").setView(content).setPositiveButton("Kapat",null).show();
+    }
+    private void samsungSleepHelp(){
+        String detected=BackgroundProtection.batteryExempt(this)
+            ?"Android, CallGuard için pil optimizasyonu muafiyeti bildiriyor. Bu, Samsung uyku listesini doğruladığımız anlamına gelmez."
+            :"Android genel pil optimizasyonu muafiyeti bildirmiyor. Bu bilgi tek başına Samsung’un uygulamayı uyuttuğu anlamına gelmez.";
+        new AlertDialog.Builder(this).setTitle("CallGuard listede görünmüyor mu?")
+            .setMessage(detected+"\n\nSamsung’un bazı sürümlerinde Kısıtlanmamış olan uygulamalar Asla uyumayan uygulamalar için ekleme listesinde görünmeyebilir.\n\nCallGuard → Pil → Kısıtlanmamış seçiliyse değiştirme; sırf listede görünmesi için Optimize edilmiş seçeneğine dönme. Listede ekleme yapmak istersen + düğmesine bak. Uyuyan / derin uyuyan listelerinde CallGuard varsa oradan çıkar.\n\nBu listeleri CallGuard kendisi değiştiremez.")
+            .setPositiveButton("CallGuard pil ayarı",(dialog,which)->openBackgroundSettings(false))
+            .setNeutralButton("Uyku listesini aç",(dialog,which)->openBackgroundSettings(true))
+            .setNegativeButton("Kapat",null).show();
     }
     private void openBackgroundSettings(boolean samsung){
         if(samsung){

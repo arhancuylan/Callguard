@@ -1,11 +1,9 @@
-CallGuard 1.1.9-preview · Arka plan bağlantısı ve pil ayarları
+CallGuard 1.1.10-preview · Öncelikli ayarlar ve Samsung pil yönlendirmesi
 
-- Android tarafından yönetilen bildirim dinleyicisinin otomatik bağlanması açıkça belirtilir.
-- Servis bağlantısı koptuğunda veya uygulamaya dönüldüğünde, izin açıksa güvenli yeniden bağlanma istenir. İstekler 15 saniye arayla sınırlandırılır; sürekli sorgulama yapılmaz.
-- Ayarlara Arka planda çalışma bölümü eklendi: gerçek servis bağlantısı, sistemin bildirdiği arka plan kısıtlaması, pil optimizasyonu ve tasarruf durumu görünür.
-- Pil ayarlarına ve Samsung’un Asla uyumayan uygulamalar listesine kısayollar eklendi. Sistem ayarları kullanıcı tarafından değiştirilir; Samsung listesi uygulamadan doğrulanamaz.
-- Son kullanılanlardan kapatma ile Zorla durdur arasındaki fark uygulama içinde açıklanır. Zorla durdur sonrası uygulamayı yeniden açmak gerekir.
-- Ek izin, sürekli ön plan servisi, wake lock veya periyodik koruma işi eklenmedi. Mevcut sesli/görüntülü çağrı reddetme ve yedekleme yöntemleri korunur.
-- Önceki kırmızı kapalı koruma kartı, uyarı simgesi, öncelikli arama ayarları ve ayrı yedekleme ekranı dahildir.
+- Ayarların başında Arama türü ve İşlem modu yer alır; Bildirim erişimi bunlardan sonra gelir.
+- Samsung uyku listesine ekleme zorunlu bir adım olarak gösterilmez. Kısıtlanmamış uygulamalar bazı Samsung sürümlerinde ekleme listesinde görünmeyebilir.
+- CallGuard uygulama bilgileri / pil ekranına doğrudan kısayol, mevcut Android optimizasyon muafiyeti açıklaması ve isteğe bağlı Samsung uyku listesi yardımı eklenmiştir.
+- Muafiyet ile üreticinin uyku listesi birbirinden ayrılır; Samsung listesi kontrol edilmiş gibi gösterilmez. Kısıtlanmamış ayarını sırf listede görünmek için geri alma önerilmez.
+- Mevcut arka plan yeniden bağlanma, sesli/görüntülü çağrı reddetme ve yedekleme özellikleri korunur. Ek izin eklenmez.
 
-Ödeme kapalıdır. Kısa birim testleri/lint/derleme/imza doğrulaması yapılır; uzun emülatör testleri çalıştırılmaz. Üreticinin uyku yönetimi ve ekran kapalı gerçek çağrı testi kullanıcı cihazında doğrulanmalıdır.
+Önizleme: ödeme kapalıdır. Kısa birim testleri, lint, APK/AAB derleme ve imza kontrolü çalıştırılır. Samsung’un gerçek liste içeriği ve menü davranışı kullanıcı cihazında doğrulanmalıdır.
