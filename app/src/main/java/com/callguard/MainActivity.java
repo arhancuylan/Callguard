@@ -25,7 +25,7 @@ public final class MainActivity extends Activity {
     private String driveAction="",driveAccount="";
     private ProBilling billing;
     private CarSilence carSilence;
-    private TextView carSetupStatus;
+    private ShizukuGuide shizukuGuide;
     private Store store; private LinearLayout root,body,nav; private ScrollView scroll;
     private final int[] tabScrollY=new int[5];
     private boolean backupPage=false;
@@ -35,18 +35,18 @@ public final class MainActivity extends Activity {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final BroadcastReceiver refresh=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(!rendering)render();}};
     @Override public void onCreate(Bundle state){
-        super.onCreate(state);store=new Store(this);carSilence=new CarSilence(this,()->{if(!isFinishing()&&!isDestroyed()){render();if(carSetupStatus!=null)carSetupStatus.setText(shizukuSetupStatus());}},this::toast);
+        super.onCreate(state);store=new Store(this);carSilence=new CarSilence(this,()->{if(!isFinishing()&&!isDestroyed()){render();if(shizukuGuide!=null)shizukuGuide.refresh();}},this::toast);
         if(state!=null){tab=state.getInt("tab");white=state.getBoolean("white",true);search=state.getString("search","");backupPage=state.getBoolean("backupPage",false);driveAction=state.getString("driveAction","");driveAccount=state.getString("driveAccount","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
         if(Build.VERSION.SDK_INT>=33)registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"),Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"));
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-        render();
+        render();if(state!=null&&state.getBoolean("shizukuGuideOpen",false))root.post(this::carSilenceDetails);
     }
-    @Override protected void onResume(){super.onResume();BackgroundProtection.reconnect(this);if(store!=null)render();if(carSetupStatus!=null)carSetupStatus.setText(shizukuSetupStatus());CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
-    @Override protected void onPause(){statusHandler.removeCallbacks(statusTick);super.onPause();}
-    @Override protected void onSaveInstanceState(Bundle out){out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
-    @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(carSilence!=null)carSilence.close();if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
+    @Override protected void onResume(){super.onResume();BackgroundProtection.reconnect(this);if(store!=null)render();if(shizukuGuide!=null)shizukuGuide.resume();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
+    @Override protected void onPause(){if(shizukuGuide!=null)shizukuGuide.pause();statusHandler.removeCallbacks(statusTick);super.onPause();}
+    @Override protected void onSaveInstanceState(Bundle out){out.putBoolean("shizukuGuideOpen",shizukuGuide!=null&&shizukuGuide.showing());out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
+    @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(shizukuGuide!=null)shizukuGuide.close();if(carSilence!=null)carSilence.close();if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private GradientDrawable bg(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
     private GradientDrawable outline(int color){GradientDrawable d=bg(color,14);d.setStroke(dp(1),BORDER);return d;}
@@ -252,12 +252,6 @@ public final class MainActivity extends Activity {
     }
     private static final String SHIZUKU_PACKAGE="moe.shizuku.privileged.api";
     private boolean shizukuInstalled(){try{getPackageManager().getApplicationInfo(SHIZUKU_PACKAGE,0);return true;}catch(PackageManager.NameNotFoundException ex){return false;}}
-    private String shizukuSetupStatus(){
-        if(!shizukuInstalled())return "1 / 3 · Önce Shizuku’yu kur";
-        if(CarSilence.ready())return "3 / 3 · Shizuku çalışıyor, CallGuard izni açık";
-        try{if(rikka.shizuku.Shizuku.pingBinder())return "2 / 3 · Shizuku çalışıyor; CallGuard’a izin ver";}catch(RuntimeException ignored){}
-        return "2 / 3 · Shizuku yüklü; Shizuku’yu açıp başlat";
-    }
     private void openWeb(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse(url)));}catch(ActivityNotFoundException|SecurityException ex){toast("Bağlantı açılamadı: "+url);}}
     private void installShizuku(){
         try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("market://details?id="+SHIZUKU_PACKAGE)).setPackage("com.android.vending"));}
@@ -269,19 +263,8 @@ public final class MainActivity extends Activity {
         try{startActivity(launch);}catch(ActivityNotFoundException|SecurityException ex){toast("Shizuku açılamadı. Telefonun uygulama listesinden açmayı dene.");}
     }
     private void carSilenceDetails(){
-        LinearLayout panel=column();panel.setPadding(dp(22),dp(8),dp(22),dp(12));
-        carSetupStatus=text(shizukuSetupStatus(),14,GREEN,true);panel.addView(carSetupStatus);gap(panel,12);
-        panel.addView(button("1 · Shizuku’yu kur",true,this::installShizuku));gap(panel,8);
-        panel.addView(button("2 · Shizuku’yu aç ve başlat",false,this::launchShizuku));gap(panel,8);
-        panel.addView(text("Root zorunlu değil. Shizuku’da Kablosuz hata ayıklama ile eşleştirip Başlat’a dokun. Android’in eşleştirme ve kurulum onaylarını sen vermelisin. Yeniden başlatma sonrası Shizuku’yu tekrar başlatman gerekebilir.",13,MUTED,false));gap(panel,8);
-        panel.addView(button("Geliştirici ayarlarını aç",false,()->{try{startActivity(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));}catch(ActivityNotFoundException|SecurityException ex){toast("Önce telefonun Geliştirici seçeneklerini etkinleştir.");}}));gap(panel,8);
-        panel.addView(button("3 · CallGuard’a Shizuku izni ver",false,carSilence::authorize));gap(panel,8);
-        panel.addView(button("Resmî kurulum rehberi",false,()->openWeb("https://shizuku.rikka.app/guide/setup/")));gap(panel,8);
-        panel.addView(button("Alternatif resmî indirme",false,()->openWeb("https://shizuku.rikka.app/download/")));gap(panel,8);
-        panel.addView(button("Araç durumunu doğrula",false,carSilence::inspect));gap(panel,8);
-        panel.addView(button("Bluetooth ayarlarını aç",false,()->{try{startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));}catch(ActivityNotFoundException ex){toast("Telefonun Bluetooth ayarlarını aç.");}}));gap(panel,12);
-        panel.addView(text("Sadece seçtiğin cihazın HFP görüşme profili değiştirilir. Tüm aramaları araçta susturur; kişiye göre seçim yapmaz. Geri alma kaydı bu telefonda tutulur, buluta veya Drive’a yedeklenmez. Shizuku izni kaldırılırsa Bluetooth → araç → Aramalar ayarından elle geri alabilirsin.",12,MUTED,false));
-        ScrollView content=new ScrollView(this);content.addView(panel);new AlertDialog.Builder(this).setTitle("Araç sessizliği kurulumu").setView(content).setPositiveButton("Kapat",null).show();
+        if(shizukuGuide==null)shizukuGuide=new ShizukuGuide(this,this::shizukuInstalled,this::installShizuku,this::launchShizuku,carSilence::authorize,this::chooseSilentCar,carSilence::inspect,()->{try{startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));}catch(ActivityNotFoundException|SecurityException ex){toast("Telefonun Bluetooth ayarlarını aç.");}});
+        shizukuGuide.show();
     }
     private void backgroundCard(){
         LinearLayout background=card();background.addView(button("Arka planda çalışma    ›",false,this::backgroundDetails));gap(background,7);
