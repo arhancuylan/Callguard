@@ -9,7 +9,6 @@ import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
 import android.os.*;
 import android.provider.*;
-import android.service.notification.NotificationListenerService;
 import android.text.*;
 import android.view.*;
 import android.widget.*;
@@ -42,7 +41,7 @@ public final class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         render();
     }
-    @Override protected void onResume(){super.onResume();if(store!=null)render();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
+    @Override protected void onResume(){super.onResume();BackgroundProtection.reconnect(this);if(store!=null)render();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
     @Override protected void onPause(){statusHandler.removeCallbacks(statusTick);super.onPause();}
     @Override protected void onSaveInstanceState(Bundle out){out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
     @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
@@ -58,7 +57,7 @@ public final class MainActivity extends Activity {
     private LinearLayout card(){LinearLayout c=column();c.setPadding(dp(16),dp(15),dp(16),dp(15));c.setBackground(bg(Color.WHITE,18));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.bottomMargin=dp(12);body.addView(c,p);return c;}
     private TextView button(String label,boolean filled,Runnable action){TextView b=text(label,15,filled?Color.WHITE:INK,true);b.setGravity(Gravity.CENTER);b.setMinHeight(dp(48));b.setPadding(dp(12),dp(10),dp(12),dp(10));b.setBackground(filled?bg(GREEN,16):outline(Color.TRANSPARENT));b.setClickable(true);b.setFocusable(true);b.setOnClickListener(v->action.run());return b;}
     private Icon icon(String type,int color,int size){Icon i=new Icon(type,color);i.setLayoutParams(new LinearLayout.LayoutParams(dp(size),dp(size)));return i;}
-    private boolean access(){String value=Settings.Secure.getString(getContentResolver(),"enabled_notification_listeners");if(value==null)return false;ComponentName expected=new ComponentName(this,CallNotificationService.class);for(String item:value.split(":")){if(expected.equals(ComponentName.unflattenFromString(item)))return true;}return false;}
+    private boolean access(){return BackgroundProtection.hasAccess(this);}
     private void render(){
         if(isFinishing())return;rendering=true;
         root=column();root.setBackgroundColor(BG);
@@ -109,7 +108,7 @@ public final class MainActivity extends Activity {
         if(!LicenseManager.allowed(this))return LicenseManager.status(this);
         if(store.paused())return "Devam: "+new SimpleDateFormat("d MMM HH:mm",new Locale("tr")).format(new Date(store.pauseUntil()));
         if(!store.scheduleActive())return "Seçili profilin gün ve saatleri dışında.";
-        if(!CallNotificationService.connected)return "İzin açık; servis henüz bağlanmadı. İzni yönet ekranından kontrol et.";
+        if(!CallNotificationService.connected)return "İzin açık; servis henüz bağlanmadı. Ayarlardaki arka plan kontrolünü aç.";
         if(store.recordOnly())return "Aramalar kaydedilir; otomatik reddedilmez.";
         return "Bildirim erişimi ve otomatik reddetme etkin.";
     }
@@ -219,10 +218,43 @@ public final class MainActivity extends Activity {
     private void settings(){heading("Her şey kontrolünde","");LinearLayout permission=card();LinearLayout r=row();r.addView(text("Bildirim erişimi",17,INK,true),new LinearLayout.LayoutParams(0,-2,1));TextView badge=text(access()?"● Etkin":"○ Kapalı",12,access()?GREEN:MUTED,true);badge.setPadding(dp(9),dp(5),dp(9),dp(5));badge.setBackground(bg(Color.rgb(222,243,224),20));r.addView(badge);permission.addView(r);gap(permission,7);permission.addView(text("Uygulamanın WhatsApp aramalarını yönetebilmesi için gereklidir.",13,MUTED,false));gap(permission,10);permission.addView(button("İzni yönet",false,this::permissionExplanation));
         LinearLayout type=card();type.addView(text("Arama türü",17,INK,true));gap(type,12);segmented(type,new String[]{"Sesli","Görüntülü","Her ikisi"},store.effectiveMedia().ordinal(),i->store.setting("media",Rules.Media.values()[i].name()));gap(type,8);type.addView(text("Kurallar seçtiğin arama türüne uygulanır.",12,MUTED,false));
         LinearLayout action=card();action.addView(text("İşlem modu",17,INK,true));gap(action,8);radio(action,"Otomatik reddet",!store.recordOnly(),()->store.setting("recordOnly",false));radio(action,"Yalnızca kaydet",store.recordOnly(),()->store.setting("recordOnly",true));gap(action,8);action.addView(text("Yalnızca kaydet modu çağrıyı susturmaz.",12,MUTED,false));
+        backgroundCard();
         scheduleCard();
         LinearLayout backup=card();backup.addView(button("Yedekleme ve geri yükleme    ›",true,()->{backupPage=true;render();}));gap(backup,7);backup.addView(text("Hesap · CallGuard bulutu · Google Drive",12,MUTED,false));
         diagnosticsCard();
         LinearLayout about=card();about.addView(text("Program hakkında",17,INK,true));gap(about,16);TextView sig=text("Call Guard by AC",25,GREEN,true);sig.setGravity(Gravity.CENTER);about.addView(sig);gap(about,4);TextView version=text("Sürüm "+BuildConfig.VERSION_NAME,12,MUTED,false);version.setGravity(Gravity.CENTER);about.addView(version);gap(about,12);TextView disclaimer=text("WhatsApp veya Meta ile bağlantılı değildir.",11,MUTED,false);disclaimer.setGravity(Gravity.CENTER);about.addView(disclaimer);
+    }
+    private void backgroundCard(){
+        LinearLayout background=card();background.addView(button("Arka planda çalışma    ›",false,this::backgroundDetails));gap(background,7);
+        background.addView(text(CallNotificationService.connected?"● Bildirim servisi bağlı":"○ Bildirim servisi bağlı değil",12,CallNotificationService.connected?GREEN:MUTED,true));
+    }
+    private void backgroundDetails(){
+        LinearLayout panel=column();panel.setPadding(dp(22),dp(8),dp(22),dp(12));
+        panel.addView(text(BackgroundProtection.status(this),13,INK,false));gap(panel,14);
+        panel.addView(text("Ekranı veya son kullanılan uygulamalar listesini kapatsan da koruma normalde devam eder. Android bağlantıyı yönetir; servis koparsa yeniden bağlanma istenir. Zorla durdurduktan sonra CallGuard’ı tekrar açmalısın.",13,MUTED,false));gap(panel,14);
+        panel.addView(button("Pil ayarlarını aç",true,()->openBackgroundSettings(false)));gap(panel,8);
+        panel.addView(text("Açılan uygulama bilgilerinde Pil → Kısıtlanmamış seçeneğini kontrol et. Menü adı telefona göre değişebilir. Bu ayarlar otomatik değiştirilmez.",12,MUTED,false));gap(panel,12);
+        if(BackgroundProtection.samsung()){
+            panel.addView(button("Samsung uyku istisnalarını aç",false,()->openBackgroundSettings(true)));gap(panel,8);
+            panel.addView(text("Pil → Arka plan kullanım sınırları → Asla uyumayan uygulamalar listesine CallGuard’ı ekle. Uyuyan / derin uyuyan listelerinde bulunmasın. Bu üretici listesini uygulamadan doğrulayamıyoruz.",12,MUTED,false));gap(panel,12);
+        }
+        panel.addView(button("Servisi yeniden bağla",false,()->{
+            if(!access()){permissionExplanation();return;}
+            if(CallNotificationService.connected){toast("Bildirim servisi zaten bağlı.");return;}
+            toast(BackgroundProtection.reconnect(this)?"Android’e yeniden bağlanma isteği gönderildi.":"Yakın zamanda istek gönderildi. Bağlantı gelmezse bildirim erişimini kapatıp yeniden aç.");
+        }));
+        ScrollView content=new ScrollView(this);content.addView(panel);
+        new AlertDialog.Builder(this).setTitle("Arka planda çalışma").setView(content).setPositiveButton("Kapat",null).show();
+    }
+    private void openBackgroundSettings(boolean samsung){
+        if(samsung){
+            for(String owner:new String[]{"com.samsung.android.lool","com.samsung.android.sm"})try{
+                startActivity(new Intent("com.samsung.android.sm.ACTION_OPEN_CHECKABLE_LISTACTIVITY").setPackage(owner).putExtra("activity_type",2));return;
+            }catch(ActivityNotFoundException|SecurityException ignored){}
+            toast("Uyku listesi doğrudan açılamadı. Pil → Arka plan kullanım sınırları yolunu kullan.");
+        }
+        try{startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName())));}
+        catch(ActivityNotFoundException|SecurityException ex){toast("Telefonun Ayarlar → Uygulamalar → CallGuard → Pil menüsünü aç.");}
     }
     private void backupSettings(){
         body.addView(button("‹  Ayarlara dön",false,this::closeBackupPage));gap(body,18);
@@ -374,7 +406,7 @@ public final class MainActivity extends Activity {
     }
     private void radio(LinearLayout parent,String label,boolean checked,Runnable change){LinearLayout r=row();RadioButton b=new RadioButton(this);b.setChecked(checked);b.setButtonTintList(android.content.res.ColorStateList.valueOf(checked?GREEN:MUTED));b.setClickable(false);b.setFocusable(false);r.addView(b,new LinearLayout.LayoutParams(dp(39),dp(40)));r.addView(text(label,14,INK,false));r.setContentDescription(label);r.setFocusable(true);r.setOnClickListener(v->change.run());parent.addView(r);}
     private void permissionExplanation(){new AlertDialog.Builder(this).setTitle("Bildirim erişimine izin ver").setMessage("Bildirim erişimi Android tarafından diğer uygulamaların bildirimlerine de erişim verebilir. CallGuard yalnızca WhatsApp ve WhatsApp Business sesli/görüntülü çağrı bildirimlerini, uygulama açık değilken de, seçtiğin kuralları uygulamak için işler. Arayan adı/numarası, çağrı türü ve Reddet eylemi kullanılır; mesaj bildirimleri işlenmez. Seçtiğin kişi listeleri ve en fazla 500 çağrı geçmişi cihazında tutulur. CallGuard bulutuna veya Google Drive’a aktarım yalnızca ilgili yedekleme seçeneğine ayrıca onay verdiğinde yapılır. İzni Android ayarlarından her zaman kapatabilirsin.").setNegativeButton("Vazgeç",null).setPositiveButton("Kabul et ve ayarları aç",(d,w)->openAccess()).show();}
-    private void openAccess(){try{if(Build.VERSION.SDK_INT>=30)startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,new ComponentName(this,CallNotificationService.class).flattenToString()));else startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));NotificationListenerService.requestRebind(new ComponentName(this,CallNotificationService.class));}catch(ActivityNotFoundException e){startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));}}
+    private void openAccess(){try{if(Build.VERSION.SDK_INT>=30)startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,new ComponentName(this,CallNotificationService.class).flattenToString()));else startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));BackgroundProtection.reconnect(this);}catch(ActivityNotFoundException e){startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));}}
     private void about(){new AlertDialog.Builder(this).setTitle("Program hakkında").setMessage("Call Guard by AC\nSürüm "+BuildConfig.VERSION_NAME+"\n\nWhatsApp veya Meta ile bağlantılı değildir.").setPositiveButton("Tamam",null).show();}
     private void toast(String value){Toast.makeText(this,value,Toast.LENGTH_LONG).show();}
     private final class Icon extends View {

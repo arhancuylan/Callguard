@@ -1,7 +1,6 @@
 package com.callguard;
 
 import android.app.*;
-import android.content.ComponentName;
 import android.os.*;
 import android.service.notification.*;
 import java.util.*;
@@ -11,11 +10,11 @@ public final class CallNotificationService extends NotificationListenerService {
     private Store store;
     static volatile boolean connected;
     private void trace(String value){if(BuildConfig.DEBUG)android.util.Log.d("CallGuardTest",value);}
-    @Override public void onListenerConnected(){connected=true;CallDiagnostics.record(this,"SERVIS_BAGLANDI");trace("listener connected");}
+    @Override public void onListenerConnected(){super.onListenerConnected();connected=true;CallDiagnostics.record(this,"SERVIS_BAGLANDI");trace("listener connected");}
     private final CallSessions processed=new CallSessions();
     @Override public void onCreate(){super.onCreate();store=new Store(this);}
-    @Override public void onDestroy(){connected=false;store.close();super.onDestroy();}
-    @Override public void onListenerDisconnected(){connected=false;CallDiagnostics.record(this,"SERVIS_BAGLANTISI_KESILDI");trace("listener disconnected");requestRebind(new ComponentName(this,CallNotificationService.class));}
+    @Override public void onDestroy(){connected=false;CallDiagnostics.record(this,"SERVIS_SONLANDI");if(store!=null)store.close();super.onDestroy();}
+    @Override public void onListenerDisconnected(){super.onListenerDisconnected();connected=false;CallDiagnostics.record(this,"SERVIS_BAGLANTISI_KESILDI");trace("listener disconnected");BackgroundProtection.reconnect(this);}
     @Override public void onNotificationPosted(StatusBarNotification sbn){
         if(sbn==null)return;
         trace("posted owner="+sbn.getPackageName()+" enabled="+store.enabled());
