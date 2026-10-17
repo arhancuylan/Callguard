@@ -1,0 +1,24 @@
+CallGuard — Araç sessizliği (Shizuku, deneysel)
+
+1. Resmi Shizuku uygulamasını kur: https://shizuku.rikka.app/download/
+2. Shizuku’nun kendi kurulum yönergeleriyle servisi başlat: https://shizuku.rikka.app/guide/setup/
+   Root zorunlu değildir. Android 11+ için kablosuz hata ayıklama kullanılabilir. Yeniden başlatma sonrası Shizuku tekrar başlatılabilir.
+3. CallGuard → Ayarlar → Araç sessizliği → Kurulum ve durum → CallGuard için Shizuku izni ver.
+4. Araç seç ve sessizliği aç düğmesinden yalnızca kendi aracını seç; etki açıklamasını okuyup etkinleştir.
+5. Kapat ve önceki ayarı geri yükle düğmesi eski HFP bağlantı politikasını geri yükler. Gerekirse araçtan yeniden bağlan.
+
+Kapsam:
+Yalnızca seçilmiş, telefonla eşleşmiş cihazın Bluetooth HEADSET/HFP profili kontrol edilir. A2DP müzik, HID ve diğer cihaz profilleri değiştirilmez. Bu mod tüm araç görüşmelerini etkiler; kara/beyaz liste istisnası yoktur. Telefon üzerindeki çağrıyı reddetmez. WhatsApp otomatik reddetme anahtarından bağımsızdır. LE Audio görüşme profilleri bu sürümün kapsamında değildir.
+
+Geri alma:
+Önceki politika değiştirmeden önce commit ile yerelde saklanır. RPC hatası/izin kaybı halinde kayıt silinmez. Etkinlik yeniden açıldığında yalnızca kaydın varlığı gösterilir; gerçek durum kontrol edilmeden aktif olduğu iddia edilmez. Bulut/Drive yedeği, hesap çıkışı ve hesap silme bu cihaz ayarını taşımaz veya unutmaz. Uygulamayı kaldırmadan veya uygulama verilerini temizlemeden önce modu kapat. Shizuku kullanılamıyorsa telefon Ayarlar → Bluetooth → araç → Aramalar seçeneğini elle aç. Yeniden başlama, uygulamayı zorla durdurma veya Shizuku’nun durması eski politikayı otomatik geri yüklemeyebilir.
+
+Yetki:
+Ayrı kullanıcı onayı ile Shizuku API izni kullanılır. Sağlayıcı INTERACT_ACROSS_USERS_FULL ile dış uygulamalara karşı korunur; CallGuard bu sistem iznini kendisi istemez. Rastgele shell komutu çalıştırılmaz. Cihaz adı/adresi ve geri alma politikası bu telefonda tutulur. Rehber/listeler ve bulut yedekleriyle birleştirilmez.
+
+Kaynak ve bağımsız uygulama:
+Shizuku resmi API/provider 13.1.5 (Apache-2.0): https://github.com/RikkaApps/Shizuku-API
+Kullanılan entegrasyon UserService ve HEADSET bağlantı politikası API'leridir. Diğer Bluetooth projelerinin GPL kaynakları kopyalanmamıştır.
+
+Doğrulama:
+Saf politika testleri eski değerin korunması, yazma öncesi günlük, başarısız RPC sonrası kayıt tutma, yeniden deneme, başka cihazı etkilememe, önceden kapalı ve bilinmeyen politikalarda değişiklik yapmama senaryolarını kapsar. Gerçek Shizuku, Samsung Bluetooth yığını ve Fiat multimedya üzerinde profil değişikliği bu platformda doğrulanamaz; özellik deneysel olarak sunulur.

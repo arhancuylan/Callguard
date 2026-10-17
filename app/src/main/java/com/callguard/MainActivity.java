@@ -24,6 +24,7 @@ public final class MainActivity extends Activity {
     private final Runnable statusTick=new Runnable(){public void run(){if(tab==0&&!isFinishing()&&!displayedProtection.equals(protectionSnapshot()))render();statusHandler.postDelayed(this,1000);}};
     private String driveAction="",driveAccount="";
     private ProBilling billing;
+    private CarSilence carSilence;
     private Store store; private LinearLayout root,body,nav; private ScrollView scroll;
     private final int[] tabScrollY=new int[5];
     private boolean backupPage=false;
@@ -33,7 +34,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final BroadcastReceiver refresh=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(!rendering)render();}};
     @Override public void onCreate(Bundle state){
-        super.onCreate(state);store=new Store(this);
+        super.onCreate(state);store=new Store(this);carSilence=new CarSilence(this,()->{if(!isFinishing()&&!isDestroyed())render();},this::toast);
         if(state!=null){tab=state.getInt("tab");white=state.getBoolean("white",true);search=state.getString("search","");backupPage=state.getBoolean("backupPage",false);driveAction=state.getString("driveAction","");driveAccount=state.getString("driveAccount","");int[] savedScroll=state.getIntArray("tabScrollY");if(savedScroll!=null)System.arraycopy(savedScroll,0,tabScrollY,0,Math.min(savedScroll.length,tabScrollY.length));}
         if(Build.VERSION.SDK_INT>=33)registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"),Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(refresh,new IntentFilter(getPackageName()+".CHANGED"));
@@ -44,7 +45,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume(){super.onResume();BackgroundProtection.reconnect(this);if(store!=null)render();CloudSync.periodic(this);CloudSync.enqueue(this);statusHandler.removeCallbacks(statusTick);statusHandler.postDelayed(statusTick,1000);}
     @Override protected void onPause(){statusHandler.removeCallbacks(statusTick);super.onPause();}
     @Override protected void onSaveInstanceState(Bundle out){out.putBoolean("backupPage",backupPage);out.putString("driveAction",driveAction);out.putString("driveAccount",driveAccount);out.putIntArray("tabScrollY",tabScrollY.clone());out.putInt("tab",tab);out.putBoolean("white",white);out.putString("search",search);super.onSaveInstanceState(out);}
-    @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
+    @Override protected void onDestroy(){if(Build.VERSION.SDK_INT>=33&&backupBackCallback!=null)getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)backupBackCallback);unregisterReceiver(refresh);if(carSilence!=null)carSilence.close();if(billing!=null)billing.close();worker.shutdown();store.close();super.onDestroy();}
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private GradientDrawable bg(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
     private GradientDrawable outline(int color){GradientDrawable d=bg(color,14);d.setStroke(dp(1),BORDER);return d;}
@@ -219,11 +220,42 @@ public final class MainActivity extends Activity {
         LinearLayout type=card();type.addView(text("Arama türü",17,INK,true));gap(type,12);segmented(type,new String[]{"Sesli","Görüntülü","Her ikisi"},store.effectiveMedia().ordinal(),i->store.setting("media",Rules.Media.values()[i].name()));gap(type,8);type.addView(text("Kurallar seçtiğin arama türüne uygulanır.",12,MUTED,false));
         LinearLayout action=card();action.addView(text("İşlem modu",17,INK,true));gap(action,8);radio(action,"Otomatik reddet",!store.recordOnly(),()->store.setting("recordOnly",false));radio(action,"Yalnızca kaydet",store.recordOnly(),()->store.setting("recordOnly",true));gap(action,8);action.addView(text("Yalnızca kaydet modu çağrıyı susturmaz. Otomatik reddetmede, reddetme isteğinden sonra aynı çağrının bildirimi temizlenmeye çalışılır. Mesajlar ve ortak bildirim özetleri silinmez.",12,MUTED,false));
         LinearLayout permission=card();LinearLayout r=row();r.addView(text("Bildirim erişimi",17,INK,true),new LinearLayout.LayoutParams(0,-2,1));TextView badge=text(access()?"● Etkin":"○ Kapalı",12,access()?GREEN:MUTED,true);badge.setPadding(dp(9),dp(5),dp(9),dp(5));badge.setBackground(bg(Color.rgb(222,243,224),20));r.addView(badge);permission.addView(r);gap(permission,7);permission.addView(text("Uygulamanın WhatsApp aramalarını yönetebilmesi için gereklidir.",13,MUTED,false));gap(permission,10);permission.addView(button("İzni yönet",false,this::permissionExplanation));
+        carSilenceCard();
         backgroundCard();
         scheduleCard();
         LinearLayout backup=card();backup.addView(button("Yedekleme ve geri yükleme    ›",true,()->{backupPage=true;render();}));gap(backup,7);backup.addView(text("Hesap · CallGuard bulutu · Google Drive",12,MUTED,false));
         diagnosticsCard();
         LinearLayout about=card();about.addView(text("Program hakkında",17,INK,true));gap(about,16);TextView sig=text("Call Guard by AC",25,GREEN,true);sig.setGravity(Gravity.CENTER);about.addView(sig);gap(about,4);TextView version=text("Sürüm "+BuildConfig.VERSION_NAME,12,MUTED,false);version.setGravity(Gravity.CENTER);about.addView(version);gap(about,12);TextView disclaimer=text("WhatsApp veya Meta ile bağlantılı değildir.",11,MUTED,false);disclaimer.setGravity(Gravity.CENTER);about.addView(disclaimer);
+    }
+    private void carSilenceCard(){
+        LinearLayout card=card();card.addView(text("Araç sessizliği · Shizuku",17,INK,true));gap(card,8);
+        card.addView(text(carSilence.status(),13,MUTED,false));gap(card,8);
+        card.addView(text("Seçtiğin aracın bütün Bluetooth görüşmelerini etkiler; beyaz liste istisnası yoktur. Telefonun kendisinde çağrı devam edebilir. WhatsApp koruma anahtarından bağımsızdır.",12,MUTED,false));gap(card,12);
+        card.addView(button(carSilence.saved()?"Kapat ve önceki ayarı geri yükle":"Araç seç ve sessizliği aç",carSilence.saved(),()->{if(carSilence.saved())carSilence.restore();else chooseSilentCar();}));gap(card,8);
+        card.addView(button("Kurulum ve durum",false,this::carSilenceDetails));
+    }
+    private void chooseSilentCar(){
+        carSilence.list(devices->{
+            if(isFinishing()||isDestroyed())return;
+            if(devices.length()==0){toast("Eşleşmiş cihaz yok. Önce telefonun Bluetooth ayarlarından aracını eşleştir.");return;}
+            String[] labels=new String[devices.length()];
+            for(int i=0;i<labels.length;i++){org.json.JSONObject device=devices.optJSONObject(i);labels[i]=device.optString("name")+" · "+device.optString("address")+(device.optInt("state")==2?" · görüşme bağlantısı var":"");}
+            new AlertDialog.Builder(this).setTitle("Yalnızca aracını seç").setItems(labels,(d,index)->{
+                org.json.JSONObject device=devices.optJSONObject(index);String address=device.optString("address"),name=device.optString("name");
+                new AlertDialog.Builder(this).setTitle("Araç görüşmeleri kapatılsın mı?").setMessage(name+"\nBeyaz listedekiler ve normal telefon aramaları dahil, bu aracın Bluetooth görüşme profili kapatılır. Müzik profili değiştirilmez. Bu işlem çağrıyı telefonun kendisinde reddetmez.\nUygulamayı silmeden veya verilerini temizlemeden önce bu modu kapat. Shizuku çalışmıyorsa telefonun Bluetooth → araç → Aramalar ayarını elle açabilirsin.")
+                    .setNegativeButton("Vazgeç",null).setPositiveButton("Anladım, aç",(dialog,which)->carSilence.enable(address,name)).show();
+            }).setNegativeButton("Vazgeç",null).show();
+        });
+    }
+    private void carSilenceDetails(){
+        LinearLayout panel=column();panel.setPadding(dp(22),dp(8),dp(22),dp(12));
+        panel.addView(text("İsteğe bağlı deneysel özellik. Shizuku’nun kurulmuş, başlatılmış ve CallGuard’a yetki vermiş olması gerekir. Root zorunlu değildir; Android 11+ cihazlarda kablosuz hata ayıklama ile kurulabilir. Telefon yeniden başladıktan sonra Shizuku’yu yeniden başlatman gerekebilir.",13,MUTED,false));gap(panel,12);
+        panel.addView(button("Shizuku kurulum rehberi",false,()->{try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://shizuku.rikka.app/guide/setup/")));}catch(ActivityNotFoundException ex){toast("Tarayıcıdan shizuku.rikka.app adresini aç.");}}));gap(panel,8);
+        panel.addView(button("CallGuard için Shizuku izni ver",false,carSilence::authorize));gap(panel,8);
+        panel.addView(button("Araç durumunu doğrula",false,carSilence::inspect));gap(panel,8);
+        panel.addView(button("Bluetooth ayarlarını aç",false,()->{try{startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));}catch(ActivityNotFoundException ex){toast("Telefonun Bluetooth ayarlarını aç.");}}));gap(panel,12);
+        panel.addView(text("Sadece seçtiğin cihazın HFP görüşme profili değiştirilir. Tüm aramaları araçta susturur; kişiye göre seçim yapmaz. Geri alma kaydı bu telefonda tutulur, buluta veya Drive’a yedeklenmez. Shizuku izni kaldırılırsa Bluetooth → araç → Aramalar ayarından elle geri alabilirsin.",12,MUTED,false));
+        ScrollView content=new ScrollView(this);content.addView(panel);new AlertDialog.Builder(this).setTitle("Araç sessizliği kurulumu").setView(content).setPositiveButton("Kapat",null).show();
     }
     private void backgroundCard(){
         LinearLayout background=card();background.addView(button("Arka planda çalışma    ›",false,this::backgroundDetails));gap(background,7);

@@ -7,13 +7,13 @@ if (configured('CALLGUARD_COMMERCIAL') == 'true' && !apiBase.startsWith('https:/
 android {
     namespace 'com.callguard'
     compileSdk 36
-    buildFeatures { buildConfig true }
+    buildFeatures { buildConfig true; aidl true }
     defaultConfig {
         applicationId 'com.callguard.mobile'
         minSdk 26
         targetSdk 36
-        versionCode = (project.findProperty('CALLGUARD_VERSION_CODE') ?: '121').toInteger()
-        versionName = (project.findProperty('CALLGUARD_VERSION_NAME') ?: '1.1.11-preview')
+        versionCode = (project.findProperty('CALLGUARD_VERSION_CODE') ?: '122').toInteger()
+        versionName = (project.findProperty('CALLGUARD_VERSION_NAME') ?: '1.1.12-preview')
         buildConfigField 'String', 'API_BASE', quoted(apiBase)
         buildConfigField 'String', 'GOOGLE_CLIENT_ID', quoted(googleClientId)
         buildConfigField 'boolean', 'COMMERCIAL_ENABLED', (configured('CALLGUARD_COMMERCIAL') == 'true').toString()
@@ -33,6 +33,8 @@ android {
     testOptions { animationsDisabled true }
 }
 dependencies {
+    implementation 'dev.rikka.shizuku:api:13.1.5'
+    implementation 'dev.rikka.shizuku:provider:13.1.5'
     implementation 'com.google.android.gms:play-services-auth:21.3.0'
     implementation 'com.android.billingclient:billing:8.1.0'
     implementation 'androidx.credentials:credentials:1.3.0'
