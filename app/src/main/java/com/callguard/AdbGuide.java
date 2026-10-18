@@ -77,6 +77,7 @@ final class AdbGuide {
         scroll.post(()->{if(showing())scroll.scrollTo(0,y);});
     }
     private void usbSetup(){
+        if(Build.VERSION.SDK_INT<30){message.accept("CallGuard USB görüşme yardımcısı Android 11 veya üzerini gerektirir. Bu sürümde cihazın Aramalar ayarını Android Bluetooth ekranından yönet.");return;}
         new AlertDialog.Builder(activity).setTitle("CallGuard USB yardımcısı")
             .setMessage("Ayrı uygulama veya root gerekmez. Bilgisayardaki USB ADB'ye kendin izin verip yalnız CallGuard'ın HFP yardımcısını başlatırsın. Wi-Fi kapalı ve kablo çıkarılmışken hizmet yaşadığı sürece cihaz ayarlarını okuyup geri yükleyebilirsin. Telefon yeniden başlarsa veya üretici hizmeti durdurursa USB ile tekrar başlatılır. Saat uygulamasının ekran bildirimleri HFP'den ayrıdır.")
             .setNegativeButton("Vazgeç",null).setPositiveButton("İzin ver ve adımları göster",(d,w)->{

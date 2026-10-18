@@ -2,6 +2,7 @@
 # Runs on the Android device under the user's already-authorized USB ADB shell.
 set -eu
 test "$(id -u)" = 2000 || { echo 'USB ADB shell UID 2000 required'; exit 1; }
+test "$(getprop ro.build.version.sdk)" -ge 30 || { echo 'CallGuard USB HFP helper requires Android 11 or newer'; exit 1; }
 apk=$(pm path --user 0 com.callguard.mobile | sed -n 's/^package://p' | head -n 1)
 case "$apk" in /data/app/*/base.apk) ;; *) echo 'Install CallGuard in the primary user first'; exit 1;; esac
 case "$apk" in *[!a-zA-Z0-9_./=+~-]*) echo 'Unexpected APK path'; exit 1;; esac

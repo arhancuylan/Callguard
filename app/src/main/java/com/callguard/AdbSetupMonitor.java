@@ -18,7 +18,7 @@ final class AdbSetupMonitor implements AutoCloseable {
         if(closed||active)return;active=true;generation++;connected=false;discovered=false;port=0;tried=0;scanning=true;detail="Mevcut eşleştirme ve bağlantı kontrol ediliyor…";
         wireless=wifiFlag();
         usb=ShellBridge.ready();if(usb){attempt();changed.run();return;}
-        discovery=new LocalAdbDiscovery(context,false,value->{if(!active)return;port=value;discovered=value>0;if(value>0){wireless=true;attempt();}else{connected=LocalAdb.ready()&&connected;changed.run();}});
+        discovery=new LocalAdbDiscovery(context,false,value->{if(!active)return;port=value;discovered=value>0;if(value>0){wireless=true;attempt();}else{connected=(usb?ShellBridge.ready():LocalAdb.ready())&&connected;changed.run();}});
         if(LocalAdb.ready())attempt();
         else{int previous=context.getSharedPreferences("local-adb",0).getInt("port",0);if(previous>0){port=previous;attempt();}}
         final int token=generation;

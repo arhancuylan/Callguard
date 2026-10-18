@@ -21,6 +21,7 @@ public final class CallGuardShell {
     }
     public static void main(String[] args){
         if(args.length!=0||android.os.Process.myUid()!=2000){System.err.println("Authorized USB shell UID 2000 required");System.exit(1);return;}
+        if(Build.VERSION.SDK_INT<30){System.err.println("CallGuard USB HFP helper requires Android 11 or newer");System.exit(1);return;}
         try{
             Looper.prepareMainLooper();Context context=shellContext();
             ShellAppIdentity identity=ShellAppIdentity.load(context);

@@ -20,7 +20,7 @@ Use a review build only in an isolated test environment until the acceptance mat
 
 Reboot, OEM process termination, APK replacement, permission revocation, or loss of the helper requires fresh USB startup. This is not a permanent grant. App process restart can reconnect to the surviving helper when Android reports the pinned CallGuard UID becoming active; the helper delivers its Binder only through CallGuard's shell-only provider. It does not repeatedly restart the app in the background. Android force-stop is not a guarantee that a separately started shell process has stopped: use explicit revoke or reboot.
 
-The current bootstrap supports the primary Android user only. Work profiles, secondary users, shared app UIDs and multiple APK signers fail closed. An OEM may deny shell access to Bluetooth hidden APIs or terminate detached processes; no security-setting workaround is automatically applied.
+The current USB HFP implementation requires Android 11/API 30 or newer and supports the primary Android user only. Earlier systems lack the connection-policy API used here (and Android 8.0 also lacks the required shell UID-observer permission); they are explicitly rejected, rather than presented as supported. Work profiles, secondary users, shared app UIDs and multiple APK signers fail closed. Android 35 is the runtime tested by this candidate; other eligible Android/OEM versions still need acceptance. An OEM may deny shell access to Bluetooth hidden APIs or terminate detached processes; no security-setting workaround is automatically applied.
 
 ## Trust boundaries
 
