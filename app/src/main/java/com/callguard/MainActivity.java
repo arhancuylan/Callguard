@@ -280,7 +280,7 @@ public final class MainActivity extends Activity {
         if(!carSilence.remember(address,name))return;
         if(!CarSilence.ready()){
             pendingCarAddress=address;pendingCarName=name;
-            new AlertDialog.Builder(this).setTitle("Cihazın kaydedildi").setMessage(name+"\nSessizliği açmak için bir defalık ADB kurulumunu tamamla. Yapılandırması bu telefonda hatırlanır; görüşme ayarı henüz değiştirilmedi.").setNegativeButton("Daha sonra",null).setPositiveButton("Kurulumu tamamla",(d,w)->carSilenceDetails()).show();return;
+            new AlertDialog.Builder(this).setTitle("Cihazın kaydedildi").setMessage(name+"\nGörüşme ayarı henüz değiştirilmedi; sessizlik uygulanmadı. Açmak için ADB bağlantısını doğrula. Eşleştirme hatırlanabilir; sessizliği uygulamak veya önceki ayarı geri yüklemek için çalışan ADB bağlantısı gerekir.").setNegativeButton("Daha sonra",null).setPositiveButton("Bağlantıyı kontrol et",(d,w)->carSilenceDetails()).show();return;
         }
         new AlertDialog.Builder(this).setTitle("Bu cihazda görüşmeler susturulsun mu?").setMessage(name+"\nBeyaz listedekiler ve normal telefon aramaları dahil, bu cihazın Bluetooth görüşme profili kapatılır. Müzik profili değiştirilmez. Telefonun kendisinde çağrı devam edebilir.\nUygulamayı silmeden önce bu modu kapat. ADB kullanılamıyorsa Bluetooth → cihaz → Aramalar ayarını elle açabilirsin.")
             .setNegativeButton("Vazgeç",null).setPositiveButton("Anladım, aç",(d,w)->{pendingCarAddress="";pendingCarName="";carSilence.enable(address,name);}).show();

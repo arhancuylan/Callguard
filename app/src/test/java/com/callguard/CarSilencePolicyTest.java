@@ -4,6 +4,16 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 public class CarSilencePolicyTest {
+    @Test public void losingShellDoesNotUndoPolicyAndRestoreNeedsShellAgain()throws Exception{
+        Memory journal=new Memory();Device device=new Device(journal);
+        CarSilencePolicy.enable(device,journal,CAR,"Synthetic headset");
+        device.failReadAfterWrite=true;
+        assertThrows(Exception.class,()->CarSilencePolicy.restore(device,journal));
+        assertEquals(0,device.policy);assertNotNull(journal.saved);assertEquals(1,device.writes);
+        device.failReadAfterWrite=false;
+        CarSilencePolicy.restore(device,journal);
+        assertEquals(100,device.policy);assertNull(journal.saved);
+    }
     private static final String CAR="01:23:45:67:89:AB";
     private static final class Memory implements CarSilencePolicy.Journal {
         CarSilencePolicy.Saved saved;boolean failSave,failClear;

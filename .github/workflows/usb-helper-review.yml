@@ -1,0 +1,70 @@
+name: USB helper review (no release)
+on:
+  pull_request:
+    branches: [main]
+    paths: ['app/**', 'adb-transport/**', 'tools/**', 'docs/**', '.github/workflows/usb-helper-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: usb-helper-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  isolated-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-35 platforms;android-36 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Restore retained signing key for emulator APKs only
+        id: signing
+        uses: actions/cache/restore@v4
+        with:
+          path: .ci-signing/callguard-final.keystore
+          key: callguard-final-signing-v1
+      - name: Fail closed without the retained key (never generate one)
+        run: test '${{ steps.signing.outputs.cache-hit }}' = true && test -f .ci-signing/callguard-final.keystore
+      - name: Unit tests, lint, debug app and instrumentation APKs
+        run: |
+          python tools/check_structure.py
+          gradle --no-daemon -PCALLGUARD_REVIEW_SIGNING=true :adb-transport:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Enable KVM in the disposable runner
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Wi-Fi-off Binder and lifecycle tests with synthetic HFP devices
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 15
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 2048
+          disable-animations: true
+          script: |
+            bash tools/usb-helper-emulator-tests.sh
+            adb shell am instrument -w -r -e class com.callguard.AdbGuideRowTest com.callguard.mobile.test/androidx.test.runner.AndroidJUnitRunner | tee evidence/usb-helper/row-accessibility.txt
+            grep -q 'OK (1 test)' evidence/usb-helper/row-accessibility.txt
+      - name: Retain test evidence only; no APK publication
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CallGuard-USB-helper-review-evidence
+          path: |
+            app/build/reports/
+            app/build/test-results/
+            adb-transport/build/reports/
+            evidence/usb-helper/
+          retention-days: 14

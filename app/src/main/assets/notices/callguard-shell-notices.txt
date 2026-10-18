@@ -1,0 +1,13 @@
+CallGuard USB HFP helper
+
+The fixed shell-to-provider Binder rendezvous was informed by Android's content shell
+tool and the Shizuku project, in particular the external-provider lifetime pattern:
+https://github.com/RikkaApps/Shizuku/blob/master/server/src/main/java/rikka/shizuku/server/ShizukuService.java
+Shizuku project / RikkaW; Apache License 2.0 (copy in Apache-2.0.txt).
+
+CallGuard's compatibility shim and restricted HFP protocol are independently written;
+no Shizuku binary, server implementation or Shizuku-API dependency is bundled.
+No Shizuku permission manager, arbitrary transaction forwarder, shell executor,
+power-save whitelist or force-stop retry behavior is implemented.
+
+Existing libadb notices and licenses are included separately by adb-transport.

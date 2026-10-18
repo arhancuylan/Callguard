@@ -28,7 +28,10 @@ android {
             keyPassword (configured('CALLGUARD_KEY_PASSWORD') ?: 'android')
         }
     }
-    buildTypes { release { signingConfig signingConfigs.distribution; minifyEnabled false } }
+    buildTypes {
+        release { signingConfig signingConfigs.distribution; minifyEnabled false }
+        debug { if(project.hasProperty('CALLGUARD_REVIEW_SIGNING')) signingConfig signingConfigs.distribution }
+    }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     testOptions { animationsDisabled true }
 }

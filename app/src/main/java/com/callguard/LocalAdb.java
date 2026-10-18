@@ -25,6 +25,7 @@ final class LocalAdb extends AbsAdbConnectionManager {
     static synchronized LocalAdb get(Context context)throws Exception {if(instance==null)instance=new LocalAdb(context);return instance;}
     static boolean ready(){LocalAdb current=instance;io.github.muntashirakon.adb.AdbConnection peer=current==null?null:current.peer;return current!=null&&current.authorized&&peer!=null&&peer.isConnected()&&peer.isConnectionEstablished();}
     static boolean pairKnown(){LocalAdb current=instance;return current!=null&&current.pairedAcknowledged;}
+    static Object connectionToken(){LocalAdb current=instance;return ready()&&current!=null?current.peer:null;}
     synchronized void verifyLocal()throws Exception{
         try{if(command("probe")!=2000)throw new IOException("ADB identity not verified");}catch(Exception ex){authorized=false;throw ex;}
         peer=getAdbConnection();authorized=true;pairedAcknowledged=true;

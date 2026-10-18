@@ -18,6 +18,10 @@ on:
         description: Run extended Android emulator tests
         type: boolean
         default: false
+      publish_after_hardware_acceptance:
+        description: Publish only after Wi-Fi-free target hardware acceptance for this exact SHA
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -144,7 +148,8 @@ jobs:
             CallGuard-1.1.22-preview.apk
             CallGuard-1.1.22-preview.apk.sha256
             CallGuard-1.1.22-preview.aab
-      - name: Publish APK after required checks; call integration can be validated on the phone
+      - name: Publish only after exact-SHA Wi-Fi-free hardware acceptance
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_after_hardware_acceptance == true && vars.CALLGUARD_WIFI_FREE_ACCEPTED_SHA == github.sha
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

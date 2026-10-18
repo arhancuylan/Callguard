@@ -13,7 +13,7 @@ import android.widget.*;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
-/** Evidence-based setup checklist with a single next action and foreground-only checks. */
+/** Evidence-based setup checklist with row shortcuts and foreground-only checks. */
 final class AdbGuide {
     private static final int GREEN=0xff08634e,RED=0xffb3261e,INK=0xff14221d,MUTED=0xff65736d;
     private final Activity activity;private final CarSilence car;private final Runnable choose,devices;private final Consumer<String> message;
@@ -34,14 +34,16 @@ final class AdbGuide {
     }
     void refresh(){
         if(!showing()||activity.isFinishing()||activity.isDestroyed())return;
-        boolean connected=monitor.connected&&LocalAdb.ready();
+        boolean connected=monitor.connected&&HfpConnection.ready();
         AdbSetupState state=new AdbSetupState(developerConfirmed,monitor.wireless,LocalAdb.pairKnown(),connected,car.silencedVerified());
-        String key=Arrays.toString(state.done)+monitor.scanning+monitor.detail+car.saved()+car.status();if(key.equals(signature))return;signature=key;
+        String key=Arrays.toString(state.done)+monitor.scanning+monitor.detail+car.saved()+car.status()+ShellBridge.enabled(activity)+ShellBridge.ready();if(key.equals(signature))return;signature=key;
         int y=scroll.getScrollY();panel.removeAllViews();
         TextView progress=label(panel,state.completed()+" / 5 adım tamamlandı",19,GREEN,true);progress.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         label(panel,monitor.detail.isEmpty()?"Mevcut ayarların otomatik kontrol edilir.":monitor.detail,13,MUTED,false);
         int next=state.next();String[] actions={"1 · Geliştirici seçeneklerini hazırla","2 · Kablosuz hata ayıklamayı aç","3 · Bildirimden kodla eşleştir","4 · Bağlantıyı otomatik kontrol et","5 · Bluetooth cihazlarını yönet","Tamam · kurulumu kapat"};
         button(panel,actions[next],true,()->advance(next));
+        button(panel,"USB ile Wi-Fi'siz kullan",false,this::usbSetup);
+        if(ShellBridge.enabled(activity))button(panel,"USB yardımcısının yetkisini iptal et",false,()->new AlertDialog.Builder(activity).setTitle("USB yardımcısı durdurulsun mu?").setMessage("Önce Cihazlarım ekranından sessizliği kapatıp eski görüşme ayarlarını geri yükleyebilirsin. Yetki iptali Bluetooth ayarını değiştirmez; geri yükleme kayıtları korunur. Tekrar kullanmak için USB ile başlatman gerekir.").setNegativeButton("Vazgeç",null).setPositiveButton("Durdur ve yetkiyi iptal et",(d,w)->car.stopUsbHelper()).show());
         String[] titles={"Geliştirici seçenekleri","Kablosuz hata ayıklama","CallGuard eşleştirmesi","Yetkili ADB bağlantısı","Bluetooth görüşme sessizliği"};
         String[] notes={
             state.done[0]?(developerConfirmed&&!monitor.wireless&&!connected?"Açık olduğunu sen onayladın.":"Kablosuz ADB üzerinden doğrulandı."):"Henüz doğrulanamadı. Telefon hakkında → Yazılım bilgileri → Yapım numarası: 7 kez dokun.",
@@ -50,7 +52,17 @@ final class AdbGuide {
             state.done[3]?"Bağlantı ve ADB yetkisi canlı olarak doğrulandı.":"Kayıtlı eşleştirme otomatik denenir. Gerekirse bağlantı portunu elle gir.",
             state.done[4]?"En az bir cihazın sessiz olduğu doğrulandı. Cihazlarını ayrı yönetebilirsin.":car.saved()?car.status()+". Cihazlarım ekranından her birini ayrı kontrol edebilirsin.":"Cihaz ekle. Her cihazın sessizliğini ayrı açıp kapatabilirsin."
         };
-        for(int i=0;i<titles.length;i++)step(panel,titles[i],notes[i],state.done[i],next==i);
+        if(connected&&monitor.usb)for(int i=0;i<3;i++)notes[i]="USB yardımcısı kullanılıyor; bu kablosuz kurulum adımı gerekli değil.";
+        for(int i=0;i<titles.length;i++){
+            final int requested=i;
+            step(panel,titles[i],notes[i],state.done[i],next==i,()->{
+                int action=state.actionFor(requested);
+                if(action==requested){advance(requested);return;}
+                new AlertDialog.Builder(activity).setTitle(titles[requested])
+                    .setMessage("Bu işlem için önce "+titles[action]+" adımı doğrulanmalı. Ayarı açmak tek başına adımı tamamlamaz.")
+                    .setNegativeButton("Vazgeç",null).setPositiveButton(actions[action],(d,w)->advance(action)).show();
+            });
+        }
         if(next==0){
             label(panel,"Android geliştirici menüsünün durumunu her telefonda doğrudan bildirmez. Kablosuz ADB bulunduğunda bu adım otomatik tamamlanır.",12,MUTED,false);
             button(panel,"Geliştirici seçenekleri zaten açık",false,()->{developerConfirmed=true;signature="";refresh();});
@@ -60,9 +72,19 @@ final class AdbGuide {
             button(panel,"Bağlantı portunu elle gir",false,this::connect);
         }
         button(panel,"Bluetooth cihazlarımı yönet",false,()->{dialog.dismiss();devices.run();});
-        if(state.done[3])button(panel,"ADB bağlantısını kes",false,()->{monitor.disconnectRequested();car.disconnect();});
+        if(state.done[3]&&!monitor.usb)button(panel,"Kablosuz ADB bağlantısını kes",false,()->{monitor.disconnectRequested();car.disconnect();});
         label(panel,"Sessizlik seçtiğin cihazın bütün Bluetooth görüşmelerini etkiler; müzik profili değişmez. Uygulamayı silmeden önce cihazların önceki ayarlarını geri yükle.",12,MUTED,false);
         scroll.post(()->{if(showing())scroll.scrollTo(0,y);});
+    }
+    private void usbSetup(){
+        new AlertDialog.Builder(activity).setTitle("CallGuard USB yardımcısı")
+            .setMessage("Ayrı uygulama veya root gerekmez. Bilgisayardaki USB ADB'ye kendin izin verip yalnız CallGuard'ın HFP yardımcısını başlatırsın. Wi-Fi kapalı ve kablo çıkarılmışken hizmet yaşadığı sürece cihaz ayarlarını okuyup geri yükleyebilirsin. Telefon yeniden başlarsa veya üretici hizmeti durdurursa USB ile tekrar başlatılır. Saat uygulamasının ekran bildirimleri HFP'den ayrıdır.")
+            .setNegativeButton("Vazgeç",null).setPositiveButton("İzin ver ve adımları göster",(d,w)->{
+                try{ShellBridge.allow(activity);}catch(IllegalStateException ex){message.accept("USB yardımcısı izni kaydedilemedi.");return;}
+                new AlertDialog.Builder(activity).setTitle("Bilgisayarda USB ile başlat")
+                    .setMessage("1. CallGuard açık kalsın. Kendi bilgisayarını USB hata ayıklama penceresinde onayla.\n2. Depodaki tools/start-usb-helper.sh dosyasını bilgisayara al.\n3. Platform-tools klasöründen şu iki komutu çalıştır:\n\nadb -d push start-usb-helper.sh /data/local/tmp/callguard-start-usb.sh\nadb -d shell sh /data/local/tmp/callguard-start-usb.sh\n\n4. Burada USB yardımcısı doğrulandı yazısını bekle. Sonra Wi-Fi'yi ve kabloyu kapatabilirsin. Cihazları ayrı ayrı ekleyip sustur; geri almayı da doğrula. OEM kısıtlaması varsa işlem başarısız olarak gösterilir.")
+                    .setPositiveButton("Tamam",(x,y)->{signature="";monitor.rescan();}).show();
+            }).show();
     }
     private void advance(int next){
         switch(next){
@@ -74,12 +96,24 @@ final class AdbGuide {
             default:dialog.dismiss();
         }
     }
-    private void step(LinearLayout parent,String title,String note,boolean done,boolean current){
+    private void step(LinearLayout parent,String title,String note,boolean done,boolean current,Runnable action){
         LinearLayout row=new LinearLayout(activity);row.setOrientation(LinearLayout.HORIZONTAL);row.setPadding(dp(12),dp(10),dp(12),dp(10));row.setGravity(Gravity.CENTER_VERTICAL);
         GradientDrawable background=rounded(done?0xffe7f3eb:0xffffeeee);background.setStroke(dp(current?2:1),done?0xffb7d9c4:current?RED:0xfff1d2d0);row.setBackground(background);
         TextView mark=new TextView(activity);mark.setText(done?"✓":"✕");mark.setTextColor(done?GREEN:RED);mark.setTextSize(25);mark.setGravity(Gravity.CENTER);row.addView(mark,new LinearLayout.LayoutParams(dp(35),-2));
         LinearLayout text=new LinearLayout(activity);text.setOrientation(LinearLayout.VERTICAL);label(text,title,15,done?GREEN:RED,true);label(text,note,12,INK,false);row.addView(text,new LinearLayout.LayoutParams(0,-2,1));
         LinearLayout.LayoutParams layout=new LinearLayout.LayoutParams(-1,-2);layout.topMargin=dp(8);parent.addView(row,layout);row.setContentDescription(title+": "+(done?"tamamlandı":"bekliyor")+". "+note);
+        if(!done){
+            row.setMinimumHeight(dp(48));row.setFocusable(true);row.setClickable(true);
+            row.setContentDescription(row.getContentDescription()+" İlgili adımı aç.");
+            row.setOnClickListener(v->action.run());
+            row.setAccessibilityDelegate(new View.AccessibilityDelegate(){
+                @Override public void onInitializeAccessibilityNodeInfo(View host,android.view.accessibility.AccessibilityNodeInfo info){
+                    super.onInitializeAccessibilityNodeInfo(host,info);info.setClassName(Button.class.getName());
+                }
+            });
+            mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            text.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        }
     }
     private int dp(int n){return Math.round(n*activity.getResources().getDisplayMetrics().density);}
     private LinearLayout column(){LinearLayout view=new LinearLayout(activity);view.setOrientation(LinearLayout.VERTICAL);view.setPadding(dp(16),dp(8),dp(16),dp(12));return view;}

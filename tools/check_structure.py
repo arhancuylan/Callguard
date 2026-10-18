@@ -24,6 +24,11 @@ assert service.attrib[ns+'name'] == '.CallNotificationService'
 assert service.attrib[ns+'permission'] == 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE'
 assert service.find('intent-filter/action').attrib[ns+'name'] == 'android.service.notification.NotificationListenerService'
 assert app.attrib[ns+'usesCleartextTraffic'] == 'false'
-assert app.find('provider') is None
-assert not any('shizuku' in p.read_text().lower() for p in (root/'app/src/main/java').rglob('*.java'))
+provider = app.find('provider')
+assert provider.attrib[ns+'name'] == '.ShellBridgeProvider'
+assert provider.attrib[ns+'authorities'] == 'com.callguard.mobile.shell'
+assert provider.attrib[ns+'exported'] == 'true'
+assert provider.attrib[ns+'grantUriPermissions'] == 'false'
+
+assert not any('import rikka.shizuku' in p.read_text().lower() or 'import moe.shizuku' in p.read_text().lower() for p in (root/'app/src/main/java').rglob('*.java'))
 print('OK: XML, manifest classes, permissions, notification listener and no external ADB manager')

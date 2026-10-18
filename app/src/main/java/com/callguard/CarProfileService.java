@@ -22,7 +22,12 @@ public final class CarProfileService {
             if(instance==null)instance=thread.getMethod("systemMain").invoke(null);
             context=(Context)thread.getMethod("getSystemContext").invoke(instance);
             Context shell=context.createPackageContext("com.android.shell",Context.CONTEXT_IGNORE_SECURITY);
-            context=new android.content.ContextWrapper(shell){@Override public Context getApplicationContext(){return this;}};
+            context=new android.content.ContextWrapper(shell){
+                @Override public Context getApplicationContext(){return this;}
+                @Override public String getOpPackageName(){return "com.android.shell";}
+                @android.annotation.TargetApi(31)
+                @Override public android.content.AttributionSource getAttributionSource(){return new android.content.AttributionSource.Builder(android.os.Process.myUid()).setPackageName("com.android.shell").build();}
+            };
         }
         if(adapter==null){
             try{BluetoothManager manager=(BluetoothManager)context.getSystemService(Context.BLUETOOTH_SERVICE);if(manager!=null)adapter=manager.getAdapter();}catch(RuntimeException ignored){}
