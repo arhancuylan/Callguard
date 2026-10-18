@@ -1,5 +1,7 @@
 name: USB helper review (no release)
 on:
+  push:
+    branches: [fix/setup-step-clicks]
   pull_request:
     branches: [main]
     paths: ['app/**', 'adb-transport/**', 'tools/**', 'docs/**', '.github/workflows/usb-helper-review.yml']
