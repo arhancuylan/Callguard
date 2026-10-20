@@ -12,8 +12,8 @@ android {
         applicationId 'com.callguard.mobile'
         minSdk 26
         targetSdk 36
-        versionCode = (project.findProperty('CALLGUARD_VERSION_CODE') ?: '133').toInteger()
-        versionName = (project.findProperty('CALLGUARD_VERSION_NAME') ?: '1.1.23-preview')
+        versionCode = (project.findProperty('CALLGUARD_VERSION_CODE') ?: '134').toInteger()
+        versionName = (project.findProperty('CALLGUARD_VERSION_NAME') ?: '1.1.24-preview')
         buildConfigField 'String', 'API_BASE', quoted(apiBase)
         buildConfigField 'String', 'GOOGLE_CLIENT_ID', quoted(googleClientId)
         buildConfigField 'boolean', 'COMMERCIAL_ENABLED', (configured('CALLGUARD_COMMERCIAL') == 'true').toString()

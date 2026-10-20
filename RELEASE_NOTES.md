@@ -1,8 +1,7 @@
-CallGuard 1.1.23-preview · Geçmişten kişi eşleştirme ve listeler arasında taşıma
+CallGuard 1.1.24-preview · Android 9 WhatsApp sesli çağrı uyumluluğu
 
-- Geçmiş kaydına dokununca numara öncelikli olarak mevcut beyaz/kara listeler ve izin verilmiş telefon rehberiyle eşleştirilir. Yalnızca ad bulunan kayıtlarda tam ad eşleştirmesi yapılır.
-- Tek numara bulunursa yeniden numara yazılması istenmez. Birden fazla numara bulunduğunda kullanıcı seçim yapar; aynı adlı kişilerin numaraları rastgele seçilmez.
-- Kayıtlı numaranın hangi listede olduğu belirtilir; ekleme/taşıma işlemleri belirgin yeşil ve kırmızı butonlarla gösterilir. Liste satırına dokunarak iki yönde taşıma yapılabilir.
-- Taşıma yalnızca seçilen numarayı karşı listeden kaldırır. Zaten ekli numara için yeniden ekleme butonu gösterilmez.
-- WhatsApp numarayı paylaşmadıysa ve kesin eşleşme yoksa açıklama, rehber seçimi ve elle ekleme seçenekleri sunulur. Rehber taraması arayüz iş parçacığını durdurmaz.
-- Numara önceliği, Türkçe ad eşleşmesi, aynı adlı kişiler, yinelenen numaralar ve bilinmeyen arayan için kısa testler eklendi. Telefon üzerinde gerçek kullanım kontrolü kullanıcı tarafından yapılacaktır.
+- Note 8 teknik kaydındaki çağrı biçimi düzeltildi: WhatsApp sesli çağrıyı grup özeti olarak işaretlediğinde ve yeni CallStyle alanları bulunmadığında, sesli çağrı metni ile açık Reddet/Yanıtla eylemleri birlikte kabul edilir.
+- Önceki kontrol aynı eski bildirim biçiminde yalnızca görüntülü çağrılara izin veriyordu; sesli çağrılar kural değerlendirmesine ve geçmişe ulaşamıyordu.
+- Çağrı kategorisi, WhatsApp/Business kaynağı, tek ve açık reddet eylemi ve yanıtla kanıtı zorunluluğu korunur. Devam eden çağrılar, mesajlar ve reddet eylemi bulunmayan sonraki bildirimler işlem görmez.
+- Ortak grup özetleri ayrıca silinmez; yalnızca doğrulanmış reddet eylemi çalıştırılır. Normal engelleme için ADB/Shizuku gerekmez.
+- Note 8 kaydının biçimi, Business/İngilizce eylem sırası ve yanlış eşleşmeleri önleyen durumlar için kısa testler eklendi. Gerçek Android 9 telefon testi kullanıcı cihazında yapılacaktır.

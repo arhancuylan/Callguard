@@ -16,7 +16,26 @@ public class RulesTest {
     @Test public void businessIsSupported(){assertNotNull(Rules.incoming("com.whatsapp.w4b","call",false,"Sesli arama",0,null,actions));}
     @Test public void ongoingAndScreeningAreNeverRejected(){for(int type:new int[]{2,3})assertNull(Rules.incoming("com.whatsapp","call",false,"Sesli arama",type,false,actions));}
     @Test public void nonCallAndOtherOwnersAreIgnored(){assertNull(Rules.incoming("other","call",false,"Sesli arama",1,false,actions));assertNull(Rules.incoming("com.whatsapp","msg",false,"Sesli arama",1,false,actions));}
-    @Test public void untypedSummaryIsIgnored(){assertNull(Rules.incoming("com.whatsapp","call",true,"Sesli arama",0,null,actions));}
+    @Test public void note8Android9VoiceSummaryIsIncoming(){
+        Rules.Analysis found=Rules.analyze("com.whatsapp","call",true,"Sesli arama",0,null,actions);
+        assertNotNull(found.incoming);assertEquals(0,found.incoming.declineIndex);assertEquals(Rules.Media.VOICE,found.incoming.media);
+        assertEquals("GELEN_CAGRI_TANINDI",found.reason);
+    }
+    @Test public void legacyVoiceSummarySupportsBusinessAndReorderedEnglishActions(){
+        Rules.Incoming found=Rules.incoming("com.whatsapp.w4b","call",true,"Incoming voice call",0,null,Arrays.asList("Answer","Decline"));
+        assertNotNull(found);assertEquals(1,found.declineIndex);assertEquals(Rules.Media.VOICE,found.media);
+    }
+    @Test public void legacyVoiceSummaryStillRequiresBothIncomingActions(){
+        for(List<String> titles:Arrays.asList(Arrays.asList("Reddet"),Arrays.asList("Yanıtla"),Arrays.asList("Geri ara","Mesaj"),Arrays.asList("Reddet","Reject","Yanıtla")))
+            assertNull(Rules.incoming("com.whatsapp","call",true,"Sesli arama",0,null,titles));
+    }
+    @Test public void summaryWithoutMediaAndMessageSummaryStayIgnored(){
+        assertNull(Rules.incoming("com.whatsapp","call",true,"",0,null,actions));
+        assertNull(Rules.incoming("com.whatsapp","msg",true,"Sesli arama",0,null,actions));
+    }
+    @Test public void note8LaterNotificationWithoutDeclineRemainsIgnored(){
+        assertEquals("REDDET_EYLEMI_TANINMADI",Rules.analyze("com.whatsapp","call",false,"Sesli arama",0,null,Arrays.asList("Geri ara","Mesaj","Aç")).reason);
+    }
     @Test public void positiveMediaEvidenceRequired(){assertNull(Rules.incoming("com.whatsapp","call",false,"",0,null,actions));}
     @Test public void declineMustBeExplicitAndUnique(){assertNull(Rules.incoming("com.whatsapp","call",false,"",1,false,Arrays.asList("Yanıtla")));assertNull(Rules.incoming("com.whatsapp","call",false,"",1,false,Arrays.asList("Reddet","Reject","Yanıtla")));}
     @Test public void answerEvidenceRequiredForLegacy(){assertNull(Rules.incoming("com.whatsapp","call",false,"Sesli arama",0,null,Arrays.asList("Reddet")));}

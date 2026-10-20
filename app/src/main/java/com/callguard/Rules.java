@@ -62,9 +62,10 @@ public final class Rules {
         if(decline<0)return no("REDDET_EYLEMI_TANINMADI");
         if(!answer&&callType!=1)return no("YANITLA_KANITI_YOK");
         boolean typed=callType==1&&isVideo!=null;
-        // Legacy video summaries can omit CallStyle extras. Require positive video
-        // evidence AND both explicit incoming actions before accepting that format.
-        if(summary&&!typed&&!(video&&answer))return no("GRUP_BILDIRIMI_KANITI_YETERSIZ");
+        // Android 9 WhatsApp marks live voice calls as group summaries and has no
+        // CallStyle extras. Both explicit incoming actions plus positive media
+        // evidence identify these calls; the summary flag alone is not a veto.
+        if(summary&&!typed&&!((video||voice)&&answer))return no("GRUP_BILDIRIMI_KANITI_YETERSIZ");
         return new Analysis(new Incoming(decline,video?Media.VIDEO:Media.VOICE),"GELEN_CAGRI_TANINDI");
     }
     public static boolean selected(Media selection, Media call) { return selection == Media.BOTH || selection == call; }
